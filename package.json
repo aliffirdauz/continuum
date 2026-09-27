@@ -1,0 +1,47 @@
+{
+  "name": "continuum",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Organizational knowledge resilience platform",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.17.0 <11"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @continuum/api prisma:generate",
+    "db:migrate": "pnpm --filter @continuum/api prisma:migrate:dev",
+    "db:seed": "pnpm --filter @continuum/api prisma:seed",
+    "compose:up": "docker compose up --build",
+    "compose:down": "docker compose down",
+    "compose:reset": "docker compose down --volumes --remove-orphans"
+  },
+  "devDependencies": {
+    "prettier": "3.9.9",
+    "turbo": "2.11.4",
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "deepmerge-ts": "8.0.2",
+      "effect": "3.20.0"
+    },
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "unrs-resolver",
+      "prisma"
+    ]
+  }
+}

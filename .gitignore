@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+dist/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Environment and secrets
+.env*
+**/.env*
+!.env.example
+!**/.env.example
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Prisma local databases
+*.db
+*.db-journal
+
+# Playwright
+playwright-report/
+test-results/
