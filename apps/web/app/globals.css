@@ -6,8 +6,16 @@
   --ink: #10201c;
 }
 
-* {
-  border-color: #e2e8f0;
+/* Unlayered CSS outranks Tailwind utilities, so the default border color must
+   live in the base layer or it overrides classes such as focus:border-emerald-700. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e2e8f0;
+  }
 }
 
 html {

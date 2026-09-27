@@ -6,15 +6,15 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 
 ## Status Summary
 
-| Phase | Scope                     | Status      |
-| ----- | ------------------------- | ----------- |
-| 1     | Foundation                | Complete    |
-| 2     | Core data                 | In progress |
-| 3     | Expertise engine          | Planned     |
-| 4     | Risk engine               | Planned     |
-| 5     | Unavailability simulation | Planned     |
-| 6     | Knowledge transfer        | Planned     |
-| 7     | Product polish            | Planned     |
+| Phase | Scope                     | Status   |
+| ----- | ------------------------- | -------- |
+| 1     | Foundation                | Complete |
+| 2     | Core data                 | Complete |
+| 3     | Expertise engine          | Planned  |
+| 4     | Risk engine               | Planned  |
+| 5     | Unavailability simulation | Planned  |
+| 6     | Knowledge transfer        | Planned  |
+| 7     | Product polish            | Planned  |
 
 ## Phase 1: Foundation
 
@@ -54,7 +54,7 @@ Acceptance evidence is maintained in [`testing/PHASE_1_TEST_CASES.md`](testing/P
 
 ## Phase 2: Core Data
 
-Status: **In progress**
+Status: **Complete**
 
 Scope:
 
@@ -110,14 +110,16 @@ Acceptance criteria:
 - No page shows expertise scores, risk levels, rankings, or performance language.
 - Lint, typecheck, unit tests, and production builds pass; API integration and browser tests pass against the Compose stack.
 
-Progress on 2026-09-27:
+Completion on 2026-09-27:
 
 - Implemented: schema and migration `20260927120000_phase_2_core_data`, the Northstar seed (186 evidence records and 44 knowledge-to-object links), read-only endpoints for dashboard summary, departments, employees, knowledge areas, business objects, and evidence, and the dashboard, knowledge, knowledge detail, people, and profile pages.
 - Passing: formatting, lint, typecheck, 64 API and 20 web unit tests, both production builds, the Phase 1 upgrade migration, seed idempotency, database integrity rules, 42 API integration tests against Compose, the client bundle token scan, and the Playwright browser tests (6 of 6, and 126 of 126 in repeated runs).
 - Fixed during browser testing: the Phase 1 sign-in form could submit natively before hydration and put the password in the URL. It now waits for hydration and uses `POST`, and a browser test guards the regression.
 - Fresh-volume startup (TC-P2-001) passed: both migrations applied to empty volumes, the seed produced the expected counts, and the integration and browser suites passed against the new stack.
 - Loading and error states (TC-P2-012) and expired API tokens (TC-P2-013) passed in scripted browser runs against the stack.
-- Remaining before completion: a hand pass of TC-P2-007 to TC-P2-011 and the keyboard-only check in TC-P2-014. The browser tests already cover most of their paths.
+- TC-P2-007 to TC-P2-011 passed a hand test in a browser.
+- The keyboard-only walkthrough (TC-P2-014) passed after a fix: a global border color rule had overridden every border utility, hiding the focus border on inputs and dropdowns. It now lives in the base layer.
+- Every acceptance criterion above has passing evidence, so Phase 2 is complete.
 
 Evidence is recorded in [`testing/PHASE_2_TEST_CASES.md`](testing/PHASE_2_TEST_CASES.md).
 

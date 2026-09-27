@@ -17,7 +17,7 @@ If the implementation and specification disagree, stop and document the decision
 
 Phase 1 is complete, including its container acceptance tests. It provides infrastructure, authentication identities, health checks, migration and seed mechanics, and the application shell.
 
-Phase 2, core data, is in progress. It adds the domain schema, the deterministic Northstar seed, read-only domain endpoints, and the dashboard, knowledge, and people pages. Its scope, exclusions, and decisions are recorded in `docs/DEVELOPMENT_PHASES.md`.
+Phase 2, core data, is complete, including its browser and container acceptance tests. It adds the domain schema, the deterministic Northstar seed, read-only domain endpoints, and the dashboard, knowledge, and people pages. Its scope, exclusions, and decisions are recorded in `docs/DEVELOPMENT_PHASES.md`.
 
 Do not mistake an authentication `User` for the domain `Employee`. They have different responsibilities and are deliberately unlinked.
 

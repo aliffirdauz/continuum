@@ -17,7 +17,7 @@ Phase 1, the platform foundation, is complete. Its full container acceptance pas
 - production-oriented Docker images and Docker Compose orchestration;
 - an accessible, responsive sign-in experience and protected application shell.
 
-Phase 2, core data, is in progress. It adds:
+Phase 2, core data, is complete. Its full acceptance passed on 2026-09-27. It adds:
 
 - departments, employees, knowledge areas, business objects, their links, and evidence in PostgreSQL;
 - a deterministic synthetic dataset for Northstar Industries: 35 people, 25 knowledge areas, 12 business objects, and 186 evidence records;
