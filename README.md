@@ -17,7 +17,14 @@ Phase 1, the platform foundation, is complete. Its full container acceptance pas
 - production-oriented Docker images and Docker Compose orchestration;
 - an accessible, responsive sign-in experience and protected application shell.
 
-Domain entities and Northstar's synthetic organizational dataset belong to Phase 2 and are intentionally not included yet. See [`docs/DEVELOPMENT_PHASES.md`](docs/DEVELOPMENT_PHASES.md) for the complete roadmap.
+Phase 2, core data, is in progress. It adds:
+
+- departments, employees, knowledge areas, business objects, their links, and evidence in PostgreSQL;
+- a deterministic synthetic dataset for Northstar Industries: 35 people, 25 knowledge areas, 12 business objects, and 186 evidence records;
+- read-only, validated, paginated REST resources for every core entity;
+- an inventory dashboard, a searchable knowledge explorer, knowledge area detail pages with evidence, and a people directory with profiles.
+
+Expertise scores, risk levels, simulation, and transfer planning belong to later phases and are intentionally absent. See [`docs/DEVELOPMENT_PHASES.md`](docs/DEVELOPMENT_PHASES.md) for the complete roadmap and the Phase 2 decisions.
 
 ## Architecture
 
@@ -64,7 +71,7 @@ Start the complete stack:
 docker compose up --build
 ```
 
-The first startup builds both applications, waits for PostgreSQL, applies committed migrations, runs the idempotent seed, waits for Redis, and then starts the API and web application.
+The first startup builds both applications, waits for PostgreSQL, applies committed migrations, runs the idempotent seed (demo accounts plus the Northstar dataset), waits for Redis, and then starts the API and web application.
 
 Open:
 
@@ -151,7 +158,17 @@ Run the full local regression gate with:
 pnpm check
 ```
 
-Phase-specific manual and automated acceptance cases are documented in [`docs/testing/PHASE_1_TEST_CASES.md`](docs/testing/PHASE_1_TEST_CASES.md).
+API integration and browser tests run against a running, seeded stack such as `docker compose up`:
+
+```bash
+pnpm --filter @continuum/web exec playwright install chromium   # once per machine
+pnpm test:integration
+pnpm test:e2e
+```
+
+They default to `http://localhost:3001/api/v1` and `http://localhost:3000`; override them with `API_BASE_URL` and `E2E_BASE_URL`. Both sign in with `DEMO_USER_PASSWORD` or `E2E_PASSWORD`, which default to the development password.
+
+Phase-specific manual and automated acceptance cases are documented in [`docs/testing/PHASE_1_TEST_CASES.md`](docs/testing/PHASE_1_TEST_CASES.md) and [`docs/testing/PHASE_2_TEST_CASES.md`](docs/testing/PHASE_2_TEST_CASES.md).
 
 ## Database Workflows
 
@@ -173,6 +190,8 @@ Re-run the idempotent seed:
 pnpm db:seed
 ```
 
+The seed upserts records by stable IDs such as `ka_line4_troubleshooting` and never deletes data. Evidence dates are fixed offsets from `2026-09-01`, so repeated runs write identical rows. The dataset lives in `apps/api/prisma/seed-data/northstar.ts`.
+
 Reset all local Compose data only when a destructive reset is intended:
 
 ```bash
@@ -185,13 +204,14 @@ docker compose up --build
 ```text
 continuum/
 |-- apps/
-|   |-- api/                  NestJS API, Prisma schema, migration, and seed
-|   `-- web/                  Next.js application and shadcn/ui primitives
+|   |-- api/                  NestJS API, Prisma schema, migrations, seed, and integration tests
+|   `-- web/                  Next.js application, shadcn/ui primitives, and Playwright tests
 |-- docs/
 |   |-- ARCHITECTURE.md
 |   |-- DEVELOPMENT_PHASES.md
 |   `-- testing/
-|       `-- PHASE_1_TEST_CASES.md
+|       |-- PHASE_1_TEST_CASES.md
+|       `-- PHASE_2_TEST_CASES.md
 |-- AGENTS.md                 Contributor and coding-agent guardrails
 |-- docker-compose.yml
 |-- pnpm-workspace.yaml

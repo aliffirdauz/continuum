@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { NavLink } from "@/components/nav-link";
 import { SignOutButton } from "@/components/sign-out-button";
 import { roleLabels } from "@/lib/roles";
 import { requireSession } from "@/lib/session";
@@ -19,10 +20,10 @@ import { requireSession } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 const navigation = [
-  { label: "Overview", icon: LayoutDashboard, active: true },
-  { label: "Knowledge", icon: BookOpenText },
+  { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Knowledge", icon: BookOpenText, href: "/knowledge" },
   { label: "Experts", icon: Search },
-  { label: "People", icon: UsersRound },
+  { label: "People", icon: UsersRound, href: "/people" },
   { label: "Simulation", icon: Activity },
   { label: "Transfers", icon: ArrowRightLeft },
   { label: "Knowledge graph", icon: Network },
@@ -57,16 +58,17 @@ export default async function PlatformLayout({
           {navigation.map((item) => {
             const Icon = item.icon;
 
-            return item.active ? (
-              <a
+            return item.href ? (
+              <NavLink
                 key={item.label}
-                href="/dashboard"
-                aria-current="page"
-                className="flex items-center gap-3 rounded-lg bg-emerald-950 px-3 py-2.5 text-sm font-semibold text-white"
+                href={item.href}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
+                activeClassName="bg-emerald-950 font-semibold text-white"
+                inactiveClassName="font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950"
               >
                 <Icon aria-hidden="true" className="size-4" />
                 {item.label}
-              </a>
+              </NavLink>
             ) : (
               <span
                 key={item.label}
@@ -102,7 +104,7 @@ export default async function PlatformLayout({
           <div className="mt-2 flex items-center justify-between px-1">
             <span className="flex items-center gap-2 text-xs text-slate-400">
               <Settings aria-hidden="true" className="size-3.5" />
-              Settings in Phase 2
+              Settings soon
             </span>
             <SignOutButton />
           </div>
@@ -119,22 +121,19 @@ export default async function PlatformLayout({
             aria-label="Mobile navigation"
             className="flex gap-1 overflow-x-auto px-4 pb-3 sm:px-6"
           >
-            <a
-              href="/dashboard"
-              aria-current="page"
-              className="shrink-0 rounded-lg bg-emerald-950 px-3 py-2 text-xs font-semibold text-white"
-            >
-              Overview
-            </a>
-            {navigation.slice(1, 4).map((item) => (
-              <span
-                key={item.label}
-                aria-disabled="true"
-                className="shrink-0 px-3 py-2 text-xs text-slate-400"
-              >
-                {item.label}
-              </span>
-            ))}
+            {navigation.map(({ label, href }) =>
+              href ? (
+                <NavLink
+                  key={label}
+                  href={href}
+                  className="shrink-0 rounded-lg px-3 py-2 text-xs focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
+                  activeClassName="bg-emerald-950 font-semibold text-white"
+                  inactiveClassName="font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  {label}
+                </NavLink>
+              ) : null,
+            )}
           </nav>
         </header>
 

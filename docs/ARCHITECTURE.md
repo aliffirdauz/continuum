@@ -1,4 +1,4 @@
-# Phase 1 Architecture
+# Architecture
 
 ## System Context
 
@@ -35,7 +35,7 @@ Continuum currently runs as a modular monolith with two deployable applications 
 | ----------- | --------------------------------------------------------------------------------------------------- |
 | Next.js web | User experience, server-side route protection, Auth.js session lifecycle, and server-side API calls |
 | NestJS API  | Input validation, authentication, authorization, future business logic, and all database access     |
-| PostgreSQL  | Durable identities now and organizational knowledge data in later phases                            |
+| PostgreSQL  | Durable identities and the organizational knowledge inventory                                       |
 | Redis       | Connectivity foundation now; BullMQ and caching in later phases                                     |
 | Prisma      | Schema, generated database client, migrations, and deterministic seed access                        |
 
@@ -56,7 +56,40 @@ The Auth.js session secret and API JWT secret are deliberately separate. The API
 
 ## Identity Boundary
 
-The Phase 1 `User` model is an authentication identity. It is not an organizational `Employee` and does not contain department, job title, location, evidence, or expertise data. Keeping these concepts separate prevents authentication concerns from distorting the Phase 2 domain model.
+`User` is an authentication identity. `Employee` is an organizational record with a department, job title, location, and evidence. They are deliberately unlinked: demo users share names with some employees, but no foreign key connects them. A later phase may associate them when a feature, such as scoping a manager to their department, needs it.
+
+## Domain Model
+
+```text
+Department 1---* Employee 1---* Evidence *---1 KnowledgeArea *---1 Department
+Department 1---* BusinessObject
+KnowledgeArea *---* BusinessObject   (KnowledgeBusinessObject, with impactWeight)
+```
+
+| Relationship                                               | On delete of the parent                                                    |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Department to employee, knowledge area, or business object | Restricted while referenced                                                |
+| Employee or knowledge area to evidence                     | Restricted; evidence is an audit trail, so retire records through `status` |
+| Knowledge area or business object to link                  | Cascades; a link has no meaning without both sides                         |
+
+Criticality, decay rate, impact weight, and evidence strength are stored from `0.0` to `1.0` and enforced by database check constraints. Phase 2 stores these inputs only; no expertise, concentration, or risk figure is calculated yet.
+
+Search uses case-insensitive substring matching. `pg_trgm` GIN indexes cover the searched columns (knowledge area name and description, employee name and job title, business object name), and B-tree indexes cover the common filters and the evidence timeline.
+
+## Data Flow for Pages
+
+```text
+1. A protected page calls requireSession() and validates its URL parameters.
+2. The page calls apiGet() in apps/web/lib/api.ts, a server-only module.
+3. apiGet() decrypts the Auth.js cookie on the server to read the API token.
+4. It calls the NestJS API with a bearer token and no browser involvement.
+5. 401 redirects to /sign-in?reason=expired, 404 renders the not-found page,
+   and any other failure renders the error boundary without internal details.
+```
+
+The browser never calls the API directly and never receives the API token. An API token can expire while the session cookie is still valid, so the sign-in page shows the form, instead of redirecting to the dashboard, when `reason=expired` is present.
+
+All domain endpoints are read-only in Phase 2, available to every authenticated role, and return `{ data, meta }` pagination envelopes with a deterministic order. The small department list is returned whole.
 
 ## Startup Sequence
 
@@ -80,8 +113,9 @@ The API exposes two probes:
 
 - Runtime startup uses `prisma migrate deploy`, never schema push.
 - The baseline migration is committed under `apps/api/prisma/migrations`.
-- Seed records have stable IDs and are upserted by email.
-- Re-running the seed updates the three demo identities without duplicating them.
+- Demo users are upserted by email; domain records are upserted by stable, readable IDs.
+- Re-running the seed updates records in place without duplicating or deleting them.
+- Evidence dates are offsets from the fixed reference date `2026-09-01T00:00:00Z`, so every run writes identical rows.
 - PostgreSQL and Redis data use named Docker volumes.
 
 ## Security Decisions
@@ -96,6 +130,6 @@ The API exposes two probes:
 - Containers run application processes as the non-root `node` user.
 - API access tokens are not returned by Auth.js session endpoints.
 
-## Phase 2 Extension Points
+## Phase 3 Extension Points
 
-Phase 2 will add domain modules to the existing NestJS application, not new services. It will introduce `Department`, `Employee`, `KnowledgeArea`, `BusinessObject`, `KnowledgeBusinessObject`, and `Evidence`, followed by their REST resources and browsable web pages.
+The expertise engine will read evidence through the existing Prisma models and keep its formulas in framework-independent services. Because seeded evidence is anchored to a fixed reference date, scoring functions should take an explicit "as of" date so tests stay reproducible.

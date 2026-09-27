@@ -3,6 +3,15 @@ import "dotenv/config";
 import { hash } from "bcryptjs";
 import { PrismaClient, Role } from "@prisma/client";
 
+import {
+  buildEvidence,
+  businessObjects,
+  departments,
+  employees,
+  knowledgeAreas,
+  knowledgeLinks,
+} from "./seed-data/northstar";
+
 const prisma = new PrismaClient();
 
 const demoUsers = [
@@ -26,7 +35,7 @@ const demoUsers = [
   },
 ] as const;
 
-async function seed() {
+async function seedDemoUsers() {
   const password = process.env.DEMO_USER_PASSWORD;
 
   if (!password || password.length < 12) {
@@ -53,9 +62,70 @@ async function seed() {
   console.info(`Seeded ${demoUsers.length} demo authentication accounts.`);
 }
 
+async function seedNorthstar() {
+  const evidence = buildEvidence();
+
+  // Array transactions run in order, so parents are written before their children.
+  await prisma.$transaction([
+    ...departments.map(({ id, ...data }) =>
+      prisma.department.upsert({
+        where: { id },
+        create: { id, ...data },
+        update: data,
+      }),
+    ),
+    ...employees.map(({ id, ...data }) =>
+      prisma.employee.upsert({
+        where: { id },
+        create: { id, ...data },
+        update: data,
+      }),
+    ),
+    ...knowledgeAreas.map(({ id, ...data }) =>
+      prisma.knowledgeArea.upsert({
+        where: { id },
+        create: { id, ...data },
+        update: data,
+      }),
+    ),
+    ...businessObjects.map(({ id, ...data }) =>
+      prisma.businessObject.upsert({
+        where: { id },
+        create: { id, ...data },
+        update: data,
+      }),
+    ),
+    ...knowledgeLinks.map(
+      ({ knowledgeAreaId, businessObjectId, impactWeight }) =>
+        prisma.knowledgeBusinessObject.upsert({
+          where: {
+            knowledgeAreaId_businessObjectId: {
+              knowledgeAreaId,
+              businessObjectId,
+            },
+          },
+          create: { knowledgeAreaId, businessObjectId, impactWeight },
+          update: { impactWeight },
+        }),
+    ),
+    ...evidence.map(({ id, ...data }) =>
+      prisma.evidence.upsert({
+        where: { id },
+        create: { id, ...data },
+        update: data,
+      }),
+    ),
+  ]);
+
+  console.info(
+    `Seeded Northstar Industries: ${departments.length} departments, ${employees.length} employees, ${knowledgeAreas.length} knowledge areas, ${businessObjects.length} business objects, ${knowledgeLinks.length} links, and ${evidence.length} evidence records.`,
+  );
+}
+
 async function main(): Promise<void> {
   try {
-    await seed();
+    await seedDemoUsers();
+    await seedNorthstar();
   } catch (error: unknown) {
     console.error("Seed failed", error);
     process.exitCode = 1;

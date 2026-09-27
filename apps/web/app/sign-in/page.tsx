@@ -19,17 +19,22 @@ const demoAccounts = [
 ];
 
 interface SignInPageProps {
-  searchParams: Promise<{ callbackUrl?: string | string[] }>;
+  searchParams: Promise<{
+    callbackUrl?: string | string[];
+    reason?: string | string[];
+  }>;
 }
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await getServerSession(authOptions);
+  const { callbackUrl: requestedCallback, reason } = await searchParams;
+  // An expired API token can outlive its session cookie, so show the form instead of looping back.
+  const sessionExpired = reason === "expired";
 
-  if (session) {
+  if (session && !sessionExpired) {
     redirect("/dashboard");
   }
 
-  const requestedCallback = (await searchParams).callbackUrl;
   const callbackUrl =
     requestedCallback === "/dashboard" ? requestedCallback : "/dashboard";
   const showDemoCredentials = process.env.SHOW_DEMO_CREDENTIALS === "true";
@@ -87,9 +92,18 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </h1>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 Sign in with a Northstar demo identity to access the Continuum
-                foundation workspace.
+                workspace.
               </p>
             </div>
+
+            {sessionExpired ? (
+              <p
+                role="status"
+                className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              >
+                Your session has expired. Sign in again to continue.
+              </p>
+            ) : null}
 
             <SignInForm
               callbackUrl={callbackUrl}
@@ -97,7 +111,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             />
 
             <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5 text-xs text-slate-500">
-              <span>Phase 1 foundation</span>
+              <span>Northstar Industries</span>
               <span className="flex items-center gap-1 font-medium text-slate-700">
                 Knowledge resilience
                 <ArrowRight aria-hidden="true" className="size-3.5" />

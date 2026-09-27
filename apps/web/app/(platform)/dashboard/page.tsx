@@ -1,14 +1,17 @@
 import {
-  Activity,
-  Check,
-  CircleDot,
-  Database,
-  Layers3,
-  Server,
+  ArrowRight,
+  BookOpenText,
+  Boxes,
+  FileText,
   ShieldCheck,
+  UsersRound,
+  type LucideIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { CriticalityMeter } from "@/components/criticality-meter";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,167 +20,263 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { apiGet } from "@/lib/api";
+import type {
+  DashboardSummary,
+  DepartmentSummary,
+  EvidenceItem,
+  KnowledgeAreaSummary,
+  Paginated,
+} from "@/lib/api-types";
+import {
+  evidenceTypeLabels,
+  formatDate,
+  formatPercent,
+  pluralize,
+} from "@/lib/format";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Overview" };
 export const dynamic = "force-dynamic";
 
-interface SystemHealth {
-  checks: {
-    database: "up" | "down";
-    redis: "up" | "down";
-  };
-  status: "ok" | "error";
+const linkClassName =
+  "rounded font-medium text-slate-900 underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none";
+
+interface StatCardProps {
+  label: string;
+  value: number;
+  detail: string;
+  icon: LucideIcon;
 }
 
-async function getSystemHealth(): Promise<SystemHealth> {
-  try {
-    const response = await fetch(
-      `${process.env.INTERNAL_API_URL ?? "http://localhost:3001/api/v1"}/health/ready`,
-      {
-        cache: "no-store",
-        signal: AbortSignal.timeout(2_500),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error("Readiness endpoint returned a non-success response");
-    }
-
-    return (await response.json()) as SystemHealth;
-  } catch {
-    return {
-      status: "error",
-      checks: { database: "down", redis: "down" },
-    };
-  }
+function StatCard({ label, value, detail, icon: Icon }: StatCardProps) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-slate-600">{label}</p>
+        <span className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-800">
+          <Icon aria-hidden="true" className="size-4" />
+        </span>
+      </div>
+      <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 tabular-nums">
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p>
+    </Card>
+  );
 }
-
-const phaseOneCapabilities = [
-  "Monorepo and build pipeline",
-  "PostgreSQL and Prisma migrations",
-  "Redis connectivity",
-  "Role-aware authentication",
-  "Containerized local runtime",
-];
-
-const upcomingModules = [
-  {
-    title: "Knowledge inventory",
-    detail: "Map knowledge areas to teams and business objects.",
-  },
-  {
-    title: "Evidence ledger",
-    detail: "Trace expertise back to verifiable organizational activity.",
-  },
-  {
-    title: "People directory",
-    detail: "Explore knowledge coverage without performance rankings.",
-  },
-];
 
 export default async function DashboardPage() {
   await requireSession();
-  const health = await getSystemHealth();
-  const isReady = health.status === "ok";
+  const [summary, departments, criticalKnowledge, recentEvidence] =
+    await Promise.all([
+      apiGet<DashboardSummary>("/dashboard/summary"),
+      apiGet<{ data: DepartmentSummary[] }>("/departments"),
+      apiGet<Paginated<KnowledgeAreaSummary>>("/knowledge", {
+        sort: "criticality",
+        pageSize: 6,
+      }),
+      apiGet<Paginated<EvidenceItem>>("/evidence", { pageSize: 5 }),
+    ]);
+  const { totals } = summary;
 
   return (
     <div className="space-y-7">
-      <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <div className="mb-3 flex items-center gap-2">
-            <Badge variant="success">Phase 1</Badge>
-            <span className="text-xs font-medium text-slate-500">
-              Foundation workspace
-            </span>
-          </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl">
-            Good foundations make knowledge durable.
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Continuum is ready for Northstar&apos;s knowledge model. Phase 2
-            will introduce the first organizational data and exploration
-            workflows.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-          <span
-            className={`size-2.5 rounded-full ${isReady ? "bg-emerald-500" : "bg-amber-500"}`}
-          />
-          <div>
-            <p className="text-xs font-semibold text-slate-900">
-              {isReady ? "All systems ready" : "System check required"}
-            </p>
-            <p className="text-[11px] text-slate-500">
-              Live infrastructure status
-            </p>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Northstar Industries"
+        title="Knowledge overview"
+        description="The knowledge Northstar depends on, the business objects it supports, and the evidence that shows where it lives."
+      />
 
       <section
-        aria-labelledby="foundation-heading"
-        className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]"
+        aria-label="Inventory totals"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
+        <StatCard
+          label="Knowledge areas"
+          value={totals.knowledgeAreas}
+          icon={BookOpenText}
+          detail={`${summary.highCriticalityKnowledgeAreas} with business criticality of ${formatPercent(summary.highCriticalityThreshold)} or more`}
+        />
+        <StatCard
+          label="People"
+          value={totals.employees}
+          icon={UsersRound}
+          detail={`Across ${pluralize(totals.departments, "department")}`}
+        />
+        <StatCard
+          label="Business objects"
+          value={totals.businessObjects}
+          icon={Boxes}
+          detail="Processes, systems, assets, and partners that rely on knowledge"
+        />
+        <StatCard
+          label="Evidence records"
+          value={totals.evidence}
+          icon={FileText}
+          detail={
+            summary.latestEvidenceAt
+              ? `Latest recorded ${formatDate(summary.latestEvidenceAt)}`
+              : "No evidence recorded yet"
+          }
+        />
+      </section>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card className="overflow-hidden">
-          <CardHeader className="border-b border-slate-100 bg-slate-50/60 sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader className="sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle id="foundation-heading">
-                Foundation readiness
-              </CardTitle>
+              <CardTitle>Most business-critical knowledge</CardTitle>
               <CardDescription>
-                Core services required before knowledge ingestion begins.
+                Ordered by the stored business criticality of each knowledge
+                area.
               </CardDescription>
             </div>
-            <Badge variant={isReady ? "success" : "warning"}>
-              {isReady ? "Operational" : "Attention needed"}
-            </Badge>
+            <Link
+              href="/knowledge"
+              className="inline-flex shrink-0 items-center gap-1 rounded text-sm font-semibold text-emerald-800 hover:text-emerald-950 focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
+            >
+              View all
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
           </CardHeader>
-          <CardContent className="grid gap-3 pt-5 sm:grid-cols-3 sm:pt-6">
-            {[
-              {
-                label: "API",
-                value: isReady ? "Connected" : "Unavailable",
-                icon: Server,
-                ready: isReady,
-              },
-              {
-                label: "PostgreSQL",
-                value: health.checks.database,
-                icon: Database,
-                ready: health.checks.database === "up",
-              },
-              {
-                label: "Redis",
-                value: health.checks.redis,
-                icon: Activity,
-                ready: health.checks.redis === "up",
-              },
-            ].map((service) => {
-              const Icon = service.icon;
-
-              return (
-                <div
-                  key={service.label}
-                  className="rounded-xl border border-slate-200 p-4"
+          <Table>
+            <TableCaption>
+              The six knowledge areas with the highest business criticality
+            </TableCaption>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead scope="col">Knowledge area</TableHead>
+                <TableHead scope="col" className="hidden md:table-cell">
+                  Department
+                </TableHead>
+                <TableHead scope="col">Criticality</TableHead>
+                <TableHead
+                  scope="col"
+                  className="hidden text-right lg:table-cell"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="grid size-9 place-items-center rounded-lg bg-slate-100 text-slate-700">
-                      <Icon aria-hidden="true" className="size-4" />
-                    </span>
-                    <span
-                      className={`size-2 rounded-full ${service.ready ? "bg-emerald-500" : "bg-amber-500"}`}
-                    />
+                  People with evidence
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {criticalKnowledge.data.map((area) => (
+                <TableRow key={area.id}>
+                  <TableCell>
+                    <Link
+                      href={`/knowledge/${area.id}`}
+                      className={linkClassName}
+                    >
+                      {area.name}
+                    </Link>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {area.category}
+                    </p>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {area.department.name}
+                  </TableCell>
+                  <TableCell>
+                    <CriticalityMeter value={area.businessCriticality} />
+                  </TableCell>
+                  <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                    {area.contributorCount}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Departments</CardTitle>
+            <CardDescription>
+              Where knowledge areas, people, and business objects belong.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-slate-100">
+              {departments.data.map((department) => (
+                <li key={department.id} className="py-3 first:pt-0 last:pb-0">
+                  <Link
+                    href={`/knowledge?department=${department.id}`}
+                    className={linkClassName}
+                  >
+                    {department.name}
+                  </Link>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {pluralize(department.knowledgeAreaCount, "knowledge area")}{" "}
+                    · {pluralize(department.employeeCount, "person", "people")}{" "}
+                    ·{" "}
+                    {pluralize(
+                      department.businessObjectCount,
+                      "business object",
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent evidence</CardTitle>
+            <CardDescription>
+              The latest recorded activity that shows where knowledge lives.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-slate-100">
+              {recentEvidence.data.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">
+                      {item.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      <Link
+                        href={`/people/${item.employee.id}`}
+                        className="rounded hover:text-slate-900 hover:underline focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
+                      >
+                        {item.employee.name}
+                      </Link>{" "}
+                      ·{" "}
+                      <Link
+                        href={`/knowledge/${item.knowledgeArea.id}`}
+                        className="rounded hover:text-slate-900 hover:underline focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
+                      >
+                        {item.knowledgeArea.name}
+                      </Link>
+                    </p>
                   </div>
-                  <p className="mt-5 text-xs font-medium text-slate-500">
-                    {service.label}
-                  </p>
-                  <p className="mt-1 capitalize text-sm font-semibold text-slate-950">
-                    {service.value}
-                  </p>
-                </div>
-              );
-            })}
+                  <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
+                    <Badge>{evidenceTypeLabels[item.type]}</Badge>
+                    <time
+                      dateTime={item.occurredAt}
+                      className="text-xs text-slate-500 tabular-nums"
+                    >
+                      {formatDate(item.occurredAt)}
+                    </time>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
 
@@ -187,88 +286,19 @@ export default async function DashboardPage() {
               <ShieldCheck aria-hidden="true" className="size-5" />
             </div>
             <CardTitle className="text-white">Privacy principle</CardTitle>
-            <CardDescription className="text-emerald-50/65">
+            <CardDescription className="text-emerald-50/75">
               Continuum evaluates the resilience of knowledge areas, never
               employee performance.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs leading-5 text-emerald-50/80">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs leading-5 text-emerald-50/85">
               No rankings, hidden monitoring, private messages, or productivity
-              scores.
+              scores. Evidence is shown to explain where knowledge lives.
             </div>
           </CardContent>
         </Card>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-lg bg-emerald-50 text-emerald-800">
-                <Layers3 aria-hidden="true" className="size-4" />
-              </span>
-              <div>
-                <CardTitle>Phase 1 delivered</CardTitle>
-                <CardDescription>
-                  Stable infrastructure with a deliberately narrow scope.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {phaseOneCapabilities.map((capability) => (
-                <li
-                  key={capability}
-                  className="flex items-center gap-3 text-sm text-slate-700"
-                >
-                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-800">
-                    <Check
-                      aria-hidden="true"
-                      className="size-3"
-                      strokeWidth={3}
-                    />
-                  </span>
-                  {capability}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-lg bg-amber-50 text-amber-800">
-                <CircleDot aria-hidden="true" className="size-4" />
-              </span>
-              <div>
-                <CardTitle>Next: core organizational data</CardTitle>
-                <CardDescription>
-                  Phase 2 turns the platform foundation into a browsable
-                  knowledge map.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {upcomingModules.map((module) => (
-              <div
-                key={module.title}
-                className="rounded-xl border border-slate-200 px-4 py-3"
-              >
-                <p className="text-sm font-semibold text-slate-900">
-                  {module.title}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
-                  {module.detail}
-                </p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </section>
+      </div>
     </div>
   );
 }

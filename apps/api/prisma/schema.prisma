@@ -31,3 +31,158 @@ model User {
 
   @@map("users")
 }
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+}
+
+enum KnowledgeAreaStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum BusinessObjectType {
+  SERVICE
+  PROCESS
+  PRODUCT
+  PROJECT
+  MACHINE
+  ASSET
+  CUSTOMER
+  SUPPLIER
+  REGULATION
+  SYSTEM
+}
+
+enum EvidenceType {
+  DOCUMENT_AUTHORED
+  DOCUMENT_CONTRIBUTION
+  PROJECT_PARTICIPATION
+  TICKET_RESOLVED
+  INCIDENT_RESOLVED
+  CODE_CONTRIBUTION
+  CODE_REVIEW
+  TRAINING_COMPLETED
+  PEER_CONFIRMATION
+  PROCESS_EXECUTION
+  MAINTENANCE_ACTIVITY
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  employees       Employee[]
+  knowledgeAreas  KnowledgeArea[]
+  businessObjects BusinessObject[]
+
+  @@map("departments")
+}
+
+model Employee {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  jobTitle     String         @map("job_title")
+  departmentId String         @map("department_id")
+  location     String
+  avatarUrl    String?        @map("avatar_url")
+  status       EmployeeStatus @default(ACTIVE)
+  joinedAt     DateTime       @map("joined_at") @db.Date
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  evidence   Evidence[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "employees_name_trgm_idx", type: Gin)
+  @@index([jobTitle(ops: raw("gin_trgm_ops"))], map: "employees_job_title_trgm_idx", type: Gin)
+  @@map("employees")
+}
+
+model KnowledgeArea {
+  id                  String              @id @default(cuid())
+  name                String              @unique
+  description         String
+  category            String
+  departmentId        String              @map("department_id")
+  businessCriticality Float               @map("business_criticality")
+  knowledgeDecayRate  Float               @map("knowledge_decay_rate")
+  status              KnowledgeAreaStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  department      Department                @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  businessObjects KnowledgeBusinessObject[]
+  evidence        Evidence[]
+
+  @@index([departmentId])
+  @@index([category])
+  @@index([businessCriticality])
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "knowledge_areas_name_trgm_idx", type: Gin)
+  @@index([description(ops: raw("gin_trgm_ops"))], map: "knowledge_areas_description_trgm_idx", type: Gin)
+  @@map("knowledge_areas")
+}
+
+model BusinessObject {
+  id           String             @id @default(cuid())
+  name         String             @unique
+  type         BusinessObjectType
+  departmentId String             @map("department_id")
+  criticality  Float
+  metadata     Json               @default("{}")
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  department     Department                @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  knowledgeAreas KnowledgeBusinessObject[]
+
+  @@index([departmentId])
+  @@index([type])
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "business_objects_name_trgm_idx", type: Gin)
+  @@map("business_objects")
+}
+
+model KnowledgeBusinessObject {
+  knowledgeAreaId  String @map("knowledge_area_id")
+  businessObjectId String @map("business_object_id")
+  impactWeight     Float  @map("impact_weight")
+
+  knowledgeArea  KnowledgeArea  @relation(fields: [knowledgeAreaId], references: [id], onDelete: Cascade)
+  businessObject BusinessObject @relation(fields: [businessObjectId], references: [id], onDelete: Cascade)
+
+  @@id([knowledgeAreaId, businessObjectId])
+  @@index([businessObjectId])
+  @@map("knowledge_business_objects")
+}
+
+model Evidence {
+  id              String       @id @default(cuid())
+  employeeId      String       @map("employee_id")
+  knowledgeAreaId String       @map("knowledge_area_id")
+  type            EvidenceType
+  title           String
+  description     String?
+  source          String
+  sourceReference String?      @map("source_reference")
+  strength        Float
+  occurredAt      DateTime     @map("occurred_at") @db.Timestamptz(3)
+  metadata        Json         @default("{}")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  knowledgeArea KnowledgeArea @relation(fields: [knowledgeAreaId], references: [id], onDelete: Restrict)
+
+  @@index([knowledgeAreaId, occurredAt(sort: Desc)])
+  @@index([employeeId, occurredAt(sort: Desc)])
+  @@index([type])
+  @@map("evidence")
+}

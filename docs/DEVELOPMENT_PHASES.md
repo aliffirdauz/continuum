@@ -6,15 +6,15 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 
 ## Status Summary
 
-| Phase | Scope                     | Status   |
-| ----- | ------------------------- | -------- |
-| 1     | Foundation                | Complete |
-| 2     | Core data                 | Planned  |
-| 3     | Expertise engine          | Planned  |
-| 4     | Risk engine               | Planned  |
-| 5     | Unavailability simulation | Planned  |
-| 6     | Knowledge transfer        | Planned  |
-| 7     | Product polish            | Planned  |
+| Phase | Scope                     | Status      |
+| ----- | ------------------------- | ----------- |
+| 1     | Foundation                | Complete    |
+| 2     | Core data                 | In progress |
+| 3     | Expertise engine          | Planned     |
+| 4     | Risk engine               | Planned     |
+| 5     | Unavailability simulation | Planned     |
+| 6     | Knowledge transfer        | Planned     |
+| 7     | Product polish            | Planned     |
 
 ## Phase 1: Foundation
 
@@ -54,23 +54,72 @@ Acceptance evidence is maintained in [`testing/PHASE_1_TEST_CASES.md`](testing/P
 
 ## Phase 2: Core Data
 
-Status: **Planned**
+Status: **In progress**
 
-Planned outcomes:
+Scope:
 
 - model departments, employees, knowledge areas, business objects, knowledge-to-object relationships, and evidence;
 - seed realistic Northstar Industries data without altering demo auth identities;
-- expose validated, paginated REST resources;
-- build dashboard, knowledge list, knowledge detail, and people browsing pages;
-- provide loading, empty, error, filtering, and responsive states;
+- expose validated, paginated, read-only REST resources;
+- build dashboard, knowledge list, knowledge detail, people list, and people profile pages;
+- provide loading, empty, error, not-found, filtering, and responsive states;
 - index common filters and search fields;
 - add API integration tests and browser-level critical-flow tests.
 
+Exclusions:
+
+- expertise scores, confidence, effective expert count, and expert distribution (Phase 3);
+- risk scores, risk levels, and risk-based dashboard figures (Phase 4);
+- create, update, and delete endpoints for domain entities;
+- a link between authentication `User` and organizational `Employee`;
+- the Expert Finder, business object pages, BullMQ, and connector simulations.
+
 Entry criteria:
 
-- Phase 1 regression remains green;
-- Phase 2 schema relationships and deletion behavior are agreed;
-- seed scenarios are mapped to stable IDs.
+- Phase 1 regression remains green (confirmed on 2026-09-27 before work started);
+- Phase 2 schema relationships and deletion behavior are agreed (recorded below);
+- seed scenarios are mapped to stable IDs (recorded below).
+
+Key decisions:
+
+- **Read-only API.** The spec's Phase 2 deliverable is browsing. The write endpoints listed in spec section 29 wait for the phase that needs them, together with their role rules.
+- **Deletion behavior.** Deleting a department is restricted while employees, knowledge areas, or business objects reference it. Deleting an employee or a knowledge area is restricted while evidence references it, because evidence is an audit trail; records are retired through their `status` instead. A knowledge-to-business-object link is deleted with either side.
+- **Value ranges.** Criticality, decay rate, impact weight, and evidence strength are stored as `0.0` to `1.0` and enforced by database check constraints.
+- **Identity boundary.** `User` and `Employee` stay unlinked. Demo authentication identities are seeded exactly as in Phase 1.
+- **Stable IDs.** Seed records use readable IDs: `dep_<name>`, `emp_<first name>`, `ka_<slug>`, `bo_<slug>`, and `ev_<knowledge area slug>_<nnn>`. Records are upserted by ID and never deleted by the seed.
+- **Deterministic time.** Evidence dates are day offsets from a fixed reference date, `2026-09-01T00:00:00Z`, so every seed run writes identical rows. The Phase 3 engine must accept an explicit "as of" date for reproducible tests.
+- **Search.** Phase 2 uses case-insensitive substring search backed by `pg_trgm` GIN indexes. Ranked full-text search arrives with the Expert Finder.
+- **People without rankings.** People views list knowledge areas alphabetically and never sort people by evidence volume. The directory shows how many knowledge areas a person has evidence in, not how much evidence they produced.
+
+Seed scenario mapping:
+
+| Scenario                  | Knowledge area ID           | Seeded shape                                                                                                       |
+| ------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| A: critical manufacturing | `ka_line4_troubleshooting`  | `emp_budi` holds most strong, recent, diverse evidence; `emp_andri` has some; two others have one weak record each |
+| B: moderately distributed | `ka_month_end_closing`      | `emp_sarah` > `emp_nadia` > `emp_fajar`, all recent                                                                |
+| C: healthy coverage       | `ka_authentication_service` | `emp_kevin`, `emp_raka`, and `emp_dina` hold comparable evidence                                                   |
+| D: aging knowledge        | `ka_legacy_supplier_import` | Most evidence is more than two years older than the reference date                                                 |
+
+Acceptance criteria:
+
+- `prisma migrate deploy` upgrades a Phase 1 database and creates a fresh database without errors.
+- Running the seed twice leaves 6 departments, 35 employees, 25 knowledge areas, 12 business objects, and the same evidence count, with the 3 demo users unchanged.
+- Every domain endpoint rejects missing and invalid tokens, validates query parameters, and returns `400` for invalid input and `404` for unknown IDs.
+- Every list endpoint returns pagination metadata and a deterministic order.
+- The dashboard, knowledge, and people pages render real seeded data, verify the session themselves, and cover loading, empty, error, not-found, and narrow-screen states.
+- No page shows expertise scores, risk levels, rankings, or performance language.
+- Lint, typecheck, unit tests, and production builds pass; API integration and browser tests pass against the Compose stack.
+
+Progress on 2026-09-27:
+
+- Implemented: schema and migration `20260927120000_phase_2_core_data`, the Northstar seed (186 evidence records and 44 knowledge-to-object links), read-only endpoints for dashboard summary, departments, employees, knowledge areas, business objects, and evidence, and the dashboard, knowledge, knowledge detail, people, and profile pages.
+- Passing: formatting, lint, typecheck, 64 API and 20 web unit tests, both production builds, the Phase 1 upgrade migration, seed idempotency, database integrity rules, 42 API integration tests against Compose, the client bundle token scan, and the Playwright browser tests (6 of 6, and 126 of 126 in repeated runs).
+- Fixed during browser testing: the Phase 1 sign-in form could submit natively before hydration and put the password in the URL. It now waits for hydration and uses `POST`, and a browser test guards the regression.
+- Fresh-volume startup (TC-P2-001) passed: both migrations applied to empty volumes, the seed produced the expected counts, and the integration and browser suites passed against the new stack.
+- Loading and error states (TC-P2-012) and expired API tokens (TC-P2-013) passed in scripted browser runs against the stack.
+- Remaining before completion: a hand pass of TC-P2-007 to TC-P2-011 and the keyboard-only check in TC-P2-014. The browser tests already cover most of their paths.
+
+Evidence is recorded in [`testing/PHASE_2_TEST_CASES.md`](testing/PHASE_2_TEST_CASES.md).
 
 ## Phase 3: Expertise Engine
 

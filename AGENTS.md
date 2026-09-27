@@ -17,7 +17,9 @@ If the implementation and specification disagree, stop and document the decision
 
 Phase 1 is complete, including its container acceptance tests. It provides infrastructure, authentication identities, health checks, migration and seed mechanics, and the application shell.
 
-Do not mistake an authentication `User` for the future domain `Employee`. Phase 2 may associate them, but they have different responsibilities.
+Phase 2, core data, is in progress. It adds the domain schema, the deterministic Northstar seed, read-only domain endpoints, and the dashboard, knowledge, and people pages. Its scope, exclusions, and decisions are recorded in `docs/DEVELOPMENT_PHASES.md`.
+
+Do not mistake an authentication `User` for the domain `Employee`. They have different responsibilities and are deliberately unlinked.
 
 Do not add expertise scoring, risk calculation, simulation, transfer planning, real connectors, AI, Neo4j, or microservices before their scheduled phase.
 
@@ -29,9 +31,10 @@ Do not add expertise scoring, risk calculation, simulation, transfer planning, r
 - Keep API routes authenticated by default; mark the smallest possible surface with `@Public()`.
 - Keep API access tokens server-side. Never expose them through the Auth.js session, rendered HTML, local storage, or client logs.
 - Call `requireSession()` from `apps/web/lib/session.ts` in every protected page. A layout check alone does not stop the page from rendering into the RSC payload.
+- Call the API from server components through `apiGet()` in `apps/web/lib/api.ts`, which is server-only. Never call the API from the browser.
 - Keep secrets in environment variables and maintain matching `.env.example` files.
 - Use committed Prisma migrations in runtime environments. Never use `prisma db push` for startup.
-- Make seeds deterministic, idempotent, and non-destructive.
+- Make seeds deterministic, idempotent, and non-destructive. Append seed evidence to the end of its group, because a record's position is part of its stable ID.
 - Keep business formulas in framework-independent services when scoring phases begin.
 
 ## Implementation Rules
@@ -70,6 +73,8 @@ pnpm build
 pnpm check
 docker compose config --quiet
 docker compose up --build
+pnpm test:integration   # needs the running stack
+pnpm test:e2e           # needs the running stack and Playwright's Chromium
 ```
 
 When `pnpm` shims are unavailable, use `npx --yes pnpm@10.17.1 <command>` for root Turborepo commands. Direct package commands can also use Corepack, for example `corepack pnpm --filter @continuum/api test`.

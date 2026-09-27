@@ -3,7 +3,7 @@
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,17 @@ interface SignInFormProps {
   demoAccounts: DemoAccount[];
 }
 
+const subscribeToNothing = () => () => {};
+
+// False during server rendering and hydration, true once React handles events.
+function useIsHydrated() {
+  return useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+}
+
 export function SignInForm({ callbackUrl, demoAccounts }: SignInFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState(demoAccounts[1]?.email ?? "");
@@ -28,6 +39,7 @@ export function SignInForm({ callbackUrl, demoAccounts }: SignInFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isHydrated = useIsHydrated();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,7 +72,13 @@ export function SignInForm({ callbackUrl, demoAccounts }: SignInFormProps) {
   }
 
   return (
-    <form className="space-y-5" onSubmit={(event) => void handleSubmit(event)}>
+    // Before hydration a native submission would bypass Auth.js, so the submit
+    // button stays disabled until then and POST keeps credentials out of the URL.
+    <form
+      method="post"
+      className="space-y-5"
+      onSubmit={(event) => void handleSubmit(event)}
+    >
       {demoAccounts.length > 0 ? (
         <fieldset>
           <legend className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -149,7 +167,7 @@ export function SignInForm({ callbackUrl, demoAccounts }: SignInFormProps) {
         type="submit"
         size="lg"
         className="w-full"
-        disabled={isSubmitting}
+        disabled={!isHydrated || isSubmitting}
       >
         {isSubmitting ? (
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />

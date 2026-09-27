@@ -72,7 +72,7 @@ Expected:
 
 - The browser is redirected to `/sign-in`.
 - No dashboard content flashes before the redirect.
-- The `307` response body contains no dashboard content such as "Foundation readiness". The page must verify the session itself, because a layout check does not stop the page from rendering into the RSC payload.
+- The `307` response body contains no dashboard content such as "Knowledge overview". The page must verify the session itself, because a layout check does not stop the page from rendering into the RSC payload.
 
 ## TC-P1-004: Valid Login for Every Role
 

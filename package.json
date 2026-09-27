@@ -16,6 +16,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
+    "test:integration": "pnpm --filter @continuum/api test:integration",
+    "test:e2e": "pnpm --filter @continuum/web test:e2e",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
