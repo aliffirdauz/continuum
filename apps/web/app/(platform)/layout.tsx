@@ -9,14 +9,12 @@ import {
   Settings,
   UsersRound,
 } from "lucide-react";
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { SignOutButton } from "@/components/sign-out-button";
-import { authOptions } from "@/lib/auth";
 import { roleLabels } from "@/lib/roles";
+import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +31,7 @@ const navigation = [
 export default async function PlatformLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    redirect("/sign-in?callbackUrl=/dashboard");
-  }
+  const session = await requireSession();
 
   return (
     <div className="min-h-screen bg-[#f5f6f2] lg:grid lg:grid-cols-[264px_minmax(0,1fr)]">

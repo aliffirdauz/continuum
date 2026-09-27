@@ -48,7 +48,7 @@ Continuum currently runs as a modular monolith with two deployable applications 
 4. NestJS returns a short-lived signed API token and safe identity fields.
 5. Auth.js stores the API token inside its encrypted, HTTP-only JWT cookie.
 6. The browser-visible session contains id, name, email, and role only.
-7. Protected Next.js layouts check the session on the server.
+7. Every protected Next.js page verifies the session on the server with `requireSession()`. The layout check alone is not enough, because a layout does not stop its page from rendering.
 8. Protected NestJS routes require a valid bearer token by default.
 ```
 

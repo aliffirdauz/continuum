@@ -36,6 +36,19 @@ describe("JwtAuthGuard", () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it("denies protected routes when a bearer token is invalid", async () => {
+    const guard = new JwtAuthGuard(
+      { getAllAndOverride: vi.fn().mockReturnValue(false) } as never,
+      {
+        verifyAsync: vi.fn().mockRejectedValue(new Error("invalid signature")),
+      } as never,
+    );
+
+    await expect(
+      guard.canActivate(createContext("Bearer invalid").context),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it("attaches verified claims to a protected request", async () => {
     const claims = {
       sub: "usr_northstar_manager",

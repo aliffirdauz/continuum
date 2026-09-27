@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Overview" };
 export const dynamic = "force-dynamic";
@@ -76,6 +77,7 @@ const upcomingModules = [
 ];
 
 export default async function DashboardPage() {
+  await requireSession();
   const health = await getSystemHealth();
   const isReady = health.status === "ok";
 

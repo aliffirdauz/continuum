@@ -6,7 +6,7 @@ The product evaluates the resilience of **knowledge areas**, not employee perfor
 
 ## Development Status
 
-Phase 1, the platform foundation, is implemented. Its final container acceptance test remains pending on a host with a running Docker engine. The implementation includes:
+Phase 1, the platform foundation, is complete. Its full container acceptance passed on 2026-09-27. The implementation includes:
 
 - a pnpm and Turborepo monorepo;
 - a Next.js web application and NestJS REST API;

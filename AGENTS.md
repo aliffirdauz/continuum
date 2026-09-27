@@ -15,7 +15,7 @@ If the implementation and specification disagree, stop and document the decision
 
 ## Current Boundary
 
-Phase 1 implementation is complete, but its final container acceptance test is pending. It provides infrastructure, authentication identities, health checks, migration and seed mechanics, and the application shell.
+Phase 1 is complete, including its container acceptance tests. It provides infrastructure, authentication identities, health checks, migration and seed mechanics, and the application shell.
 
 Do not mistake an authentication `User` for the future domain `Employee`. Phase 2 may associate them, but they have different responsibilities.
 
@@ -28,6 +28,7 @@ Do not add expertise scoring, risk calculation, simulation, transfer planning, r
 - PostgreSQL is the source of truth.
 - Keep API routes authenticated by default; mark the smallest possible surface with `@Public()`.
 - Keep API access tokens server-side. Never expose them through the Auth.js session, rendered HTML, local storage, or client logs.
+- Call `requireSession()` from `apps/web/lib/session.ts` in every protected page. A layout check alone does not stop the page from rendering into the RSC payload.
 - Keep secrets in environment variables and maintain matching `.env.example` files.
 - Use committed Prisma migrations in runtime environments. Never use `prisma db push` for startup.
 - Make seeds deterministic, idempotent, and non-destructive.

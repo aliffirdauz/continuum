@@ -3,6 +3,8 @@ FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NEXT_TELEMETRY_DISABLED=1
+# Keep the prepared pnpm readable by the non-root runtime user so migrate and seed start offline.
+ENV COREPACK_HOME="/corepack"
 
 RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
 WORKDIR /app

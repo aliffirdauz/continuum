@@ -6,19 +6,19 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 
 ## Status Summary
 
-| Phase | Scope                     | Status               |
-| ----- | ------------------------- | -------------------- |
-| 1     | Foundation                | Verification pending |
-| 2     | Core data                 | Planned              |
-| 3     | Expertise engine          | Planned              |
-| 4     | Risk engine               | Planned              |
-| 5     | Unavailability simulation | Planned              |
-| 6     | Knowledge transfer        | Planned              |
-| 7     | Product polish            | Planned              |
+| Phase | Scope                     | Status   |
+| ----- | ------------------------- | -------- |
+| 1     | Foundation                | Complete |
+| 2     | Core data                 | Planned  |
+| 3     | Expertise engine          | Planned  |
+| 4     | Risk engine               | Planned  |
+| 5     | Unavailability simulation | Planned  |
+| 6     | Knowledge transfer        | Planned  |
+| 7     | Product polish            | Planned  |
 
 ## Phase 1: Foundation
 
-Status: **Implementation complete; container acceptance pending**
+Status: **Complete**
 
 Delivered:
 
@@ -48,12 +48,9 @@ Key decisions:
 - Credentials are appropriate only for the synthetic portfolio environment.
 - Redis is verified by readiness but remains functionally unused until a queue or cache has a concrete requirement.
 - API routes are deny-by-default.
+- Every protected web page verifies the session itself with `requireSession()`, because a layout check does not stop its page from rendering.
 
-Acceptance evidence is maintained in [`testing/PHASE_1_TEST_CASES.md`](testing/PHASE_1_TEST_CASES.md).
-
-Remaining exit criterion:
-
-- run the documented fresh-stack, migration, seed idempotency, role login, and dependency degradation cases on a host where the Docker engine is available.
+Acceptance evidence is maintained in [`testing/PHASE_1_TEST_CASES.md`](testing/PHASE_1_TEST_CASES.md). The full container acceptance, including the manual keyboard and responsive check, passed on 2026-09-27 after three fixes: Compose image pull policy, an offline-capable pnpm cache in the API image, and page-level session verification.
 
 ## Phase 2: Core Data
 

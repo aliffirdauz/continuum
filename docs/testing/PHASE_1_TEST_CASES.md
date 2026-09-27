@@ -66,11 +66,13 @@ Steps:
 
 1. Open a private browser window.
 2. Navigate directly to `http://localhost:3000/dashboard`.
+3. Run `curl -i http://localhost:3000/dashboard` without cookies.
 
 Expected:
 
 - The browser is redirected to `/sign-in`.
 - No dashboard content flashes before the redirect.
+- The `307` response body contains no dashboard content such as "Foundation readiness". The page must verify the session itself, because a layout check does not stop the page from rendering into the RSC payload.
 
 ## TC-P1-004: Valid Login for Every Role
 
@@ -119,7 +121,7 @@ Steps:
 Expected:
 
 - Missing and invalid tokens return HTTP `401`.
-- A valid token returns only `sub`, `email`, and `role` claims.
+- A valid token returns the `sub`, `email`, and `role` claims plus the standard `iat` and `exp` timestamps, with no password hash or other secret.
 
 ## TC-P1-007: Sign Out
 
@@ -222,22 +224,47 @@ Expected:
 
 ## Regression Evidence
 
-| Check                     | Result  | Evidence                                                                    |
-| ------------------------- | ------- | --------------------------------------------------------------------------- |
-| Frozen dependency install | Pass    | Lockfile install and Prisma generation exited `0` on 2026-09-27             |
-| Formatting                | Pass    | Prettier check exited `0` on 2026-09-27                                     |
-| API lint                  | Pass    | ESLint exited `0` on 2026-09-27                                             |
-| Web lint                  | Pass    | ESLint exited `0` on 2026-09-27                                             |
-| API typecheck             | Pass    | TypeScript exited `0` on 2026-09-27                                         |
-| Web typecheck             | Pass    | TypeScript exited `0` on 2026-09-27                                         |
-| API unit tests            | Pass    | 12 tests across 5 files on 2026-09-27                                       |
-| Web unit tests            | Pass    | 2 tests across 2 files on 2026-09-27                                        |
-| API production build      | Pass    | Nest build produced `dist/main.js` on 2026-09-27                            |
-| Web production build      | Pass    | Next.js build completed on 2026-09-27                                       |
-| Prisma schema and SQL     | Pass    | Schema validated and empty-to-schema SQL matched the baseline               |
-| Dependency security audit | Pass    | `pnpm audit --prod` reported no known vulnerabilities                       |
-| Production web smoke      | Pass    | Sign-in `200`, protected redirect `307`, session `{}`, and no password HTML |
-| Compose configuration     | Pass    | `docker compose config --quiet` exited `0` on 2026-09-27                    |
-| Full container smoke test | Pending | Docker Windows service required privileges unavailable in this session      |
+| Check                     | Result | Evidence                                                                    |
+| ------------------------- | ------ | --------------------------------------------------------------------------- |
+| Frozen dependency install | Pass   | Lockfile install and Prisma generation exited `0` on 2026-09-27             |
+| Formatting                | Pass   | Prettier check exited `0` on 2026-09-27                                     |
+| API lint                  | Pass   | ESLint exited `0` on 2026-09-27                                             |
+| Web lint                  | Pass   | ESLint exited `0` on 2026-09-27                                             |
+| API typecheck             | Pass   | TypeScript exited `0` on 2026-09-27                                         |
+| Web typecheck             | Pass   | TypeScript exited `0` on 2026-09-27                                         |
+| API unit tests            | Pass   | 13 tests across 5 files on 2026-09-27                                       |
+| Web unit tests            | Pass   | 4 tests across 3 files on 2026-09-27                                        |
+| API production build      | Pass   | Nest build produced `dist/main.js` on 2026-09-27                            |
+| Web production build      | Pass   | Next.js build completed on 2026-09-27                                       |
+| Prisma schema and SQL     | Pass   | Schema validated and empty-to-schema SQL matched the baseline               |
+| Dependency security audit | Pass   | `pnpm audit --prod` reported no known vulnerabilities                       |
+| Production web smoke      | Pass   | Sign-in `200`, protected redirect `307`, session `{}`, and no password HTML |
+| Compose configuration     | Pass   | `docker compose config --quiet` exited `0` on 2026-09-27                    |
+
+### Container Acceptance
+
+Run on 2026-09-27 on Windows 11 with Docker Desktop 28.4.0 and Compose v2.39.4. HTTP cases were driven with `curl` against the API and the Auth.js endpoints (`/api/auth/csrf`, `/api/auth/callback/credentials`, `/api/auth/session`, `/api/auth/signout`). TC-P1-010 was checked manually in a browser.
+
+| Case                                  | Result        | Evidence                                                                                                                                                                                                    |
+| ------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-P1-001 Fresh stack startup         | Pass          | After `down --volumes`, `up --build` applied the baseline migration; `migrate` and `seed` exited `0`; postgres, redis, api, and web reported healthy                                                        |
+| TC-P1-002 Health separation           | Pass          | Liveness `200` with `status: "ok"`; readiness `200` with database and redis `up`; neither body contains a connection string or secret                                                                       |
+| TC-P1-003 Protected web route         | Pass (fixed)  | Anonymous `/dashboard` returns `307` to `/sign-in?callbackUrl=/dashboard`. The first run found the dashboard RSC payload in that response body; the page now calls `requireSession()` and the body is clean |
+| TC-P1-004 Valid login for every role  | Pass (HTTP)   | All three roles reach `/dashboard` with the correct name and role label; the session cookie is `HttpOnly`; no API token, `accessToken` field, or password appears in HTML, session JSON, or URLs            |
+| TC-P1-005 Invalid login               | Pass          | Wrong password and unknown email both return `401` with the identical `CredentialsSignin` response and no session cookie; direct API timings were 0.448 s and 0.435 s                                       |
+| TC-P1-006 API authentication boundary | Pass          | Missing and invalid tokens return `401`; a valid token returns `sub`, `email`, `role`, `iat`, and `exp`                                                                                                     |
+| TC-P1-007 Sign out                    | Pass          | Sign-out returns `/sign-in`, the session becomes `{}`, and `/dashboard` redirects to sign-in again without dashboard content                                                                                |
+| TC-P1-008 Seed idempotency            | Pass          | Two `docker compose run --rm seed` runs exited `0`; `users` holds exactly three rows with stable IDs and roles; every account signs in afterward                                                            |
+| TC-P1-009 Persistence across restart  | Pass          | After `down` and `up`, both volumes kept their creation time, `migrate` reported no pending migrations, users and `last_login_at` persisted, and every role signed in                                       |
+| TC-P1-010 Responsive and keyboard UX  | Pass (manual) | Confirmed in a browser: keyboard-only sign-in at 375 × 812, visible focus, no horizontal overflow, usable mobile and desktop layouts, and a skip link that moves focus to the main content                  |
+| TC-P1-011 Readiness degradation       | Pass          | With Redis stopped, liveness stayed `200` and readiness returned `503` with redis `down` in 2.4 s; readiness returned `200` after Redis restarted                                                           |
+| TC-P1-012 Demo credential visibility  | Pass          | With `SHOW_DEMO_CREDENTIALS=false`, quick demo access is absent and manual sign-in reaches `/dashboard`; the default was restored afterward                                                                 |
+| Offline migrate and seed tooling      | Pass          | `docker run --rm --network none continuum-api:local pnpm --version` printed `10.17.1`; migrate and seed logs no longer show a runtime pnpm download                                                         |
+
+Fixes made during container acceptance:
+
+- `docker-compose.yml` sets `pull_policy: build` on `migrate` and `pull_policy: never` on `seed` and `api`, so Compose builds the shared `continuum-api:local` image instead of pulling it from a registry.
+- `apps/api/Dockerfile` sets `COREPACK_HOME=/corepack`, so the pnpm prepared at build time is readable by the non-root `node` user and migrate and seed start without network access.
+- Protected pages call `requireSession()` from `apps/web/lib/session.ts`. Next.js renders a layout in parallel with its page, so the layout check alone let the dashboard render into the redirect response.
 
 Do not mark a future infrastructure change complete while the full container smoke test is pending or failing.
