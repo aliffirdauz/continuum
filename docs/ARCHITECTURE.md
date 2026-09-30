@@ -72,7 +72,7 @@ KnowledgeArea *---* BusinessObject   (KnowledgeBusinessObject, with impactWeight
 | Employee or knowledge area to evidence                     | Restricted; evidence is an audit trail, so retire records through `status` |
 | Knowledge area or business object to link                  | Cascades; a link has no meaning without both sides                         |
 
-Criticality, decay rate, impact weight, and evidence strength are stored from `0.0` to `1.0` and enforced by database check constraints. Phase 2 stores these inputs only; no expertise, concentration, or risk figure is calculated yet.
+Criticality, decay rate, impact weight, and evidence strength are stored from `0.0` to `1.0` and enforced by database check constraints. Phase 3 uses evidence strength and decay rate for expertise and effective expert count; it does not calculate risk levels or risk scores (Phase 4).
 
 Search uses case-insensitive substring matching. `pg_trgm` GIN indexes cover the searched columns (knowledge area name and description, employee name and job title, business object name), and B-tree indexes cover the common filters and the evidence timeline.
 
@@ -89,7 +89,7 @@ Search uses case-insensitive substring matching. `pg_trgm` GIN indexes cover the
 
 The browser never calls the API directly and never receives the API token. An API token can expire while the session cookie is still valid, so the sign-in page shows the form, instead of redirecting to the dashboard, when `reason=expired` is present.
 
-All domain endpoints are read-only in Phase 2, available to every authenticated role, and return `{ data, meta }` pagination envelopes with a deterministic order. The small department list is returned whole.
+Domain endpoints remain read-only in Phase 3 and available to every authenticated role. Lists return deterministic ordering and pagination metadata where applicable; expert search groups contributors under matched knowledge areas rather than creating a cross-area leaderboard.
 
 ## Startup Sequence
 
@@ -132,4 +132,4 @@ The API exposes two probes:
 
 ## Phase 3 Extension Points
 
-The expertise engine will read evidence through the existing Prisma models and keep its formulas in framework-independent services. Because seeded evidence is anchored to a fixed reference date, scoring functions should take an explicit "as of" date so tests stay reproducible.
+Phase 3 now calculates expertise on demand in the NestJS API. Formula functions under `apps/api/src/expertise/` are independent of NestJS and Prisma; the service reads evidence in batches, excludes records after an explicit `asOf` timestamp (default: request time), and exposes protected, read-only expert distribution, per-person expertise, and area-based expert search. Evidence weights, decay bands, the global score scale, confidence thresholds, and inverse HHI are recorded in [`DEVELOPMENT_PHASES.md`](DEVELOPMENT_PHASES.md). Scores are displayed per knowledge area, never as an organization-wide employee ranking. The web calls these endpoints through the existing server-only `apiGet()` path, so the token boundary is unchanged. No scoring cache, queue, or schema migration is required yet; risk calculations remain Phase 4.

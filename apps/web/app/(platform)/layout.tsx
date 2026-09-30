@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 const navigation = [
   { label: "Overview", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Knowledge", icon: BookOpenText, href: "/knowledge" },
-  { label: "Experts", icon: Search },
+  { label: "Experts", icon: Search, href: "/experts" },
   { label: "People", icon: UsersRound, href: "/people" },
   { label: "Simulation", icon: Activity },
   { label: "Transfers", icon: ArrowRightLeft },

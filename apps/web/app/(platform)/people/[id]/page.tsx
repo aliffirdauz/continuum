@@ -10,6 +10,7 @@ import { EvidenceTable } from "@/components/evidence-table";
 import { PageHeader } from "@/components/page-header";
 import { PaginationNav } from "@/components/pagination-nav";
 import { PersonAvatar } from "@/components/person-avatar";
+import { ProfileExpertise } from "@/components/profile-expertise";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -27,7 +28,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { apiGet } from "@/lib/api";
-import type { EmployeeDetail, EvidenceItem, Paginated } from "@/lib/api-types";
+import type {
+  EmployeeDetail,
+  EmployeeExpertise,
+  EvidenceItem,
+  Paginated,
+} from "@/lib/api-types";
 import {
   employeeStatusLabels,
   evidenceTypeLabels,
@@ -80,12 +86,21 @@ export default async function PersonPage({
     notFound();
   }
 
-  const page = parsePage((await searchParams).page);
-  const [person, evidence] = await Promise.all([
+  const query = await searchParams;
+  const page = parsePage(query.page);
+  const expertisePage = parsePage(query.expertisePage);
+  const [person, evidence, expertise] = await Promise.all([
     getPerson(id),
     apiGet<Paginated<EvidenceItem>>(
       `/employees/${encodeURIComponent(id)}/evidence`,
       { page, pageSize: EVIDENCE_PAGE_SIZE },
+    ),
+    apiGet<Paginated<EmployeeExpertise>>(
+      `/employees/${encodeURIComponent(id)}/expertise`,
+      {
+        page: expertisePage,
+        pageSize: 20,
+      },
     ),
   ]);
 
@@ -120,13 +135,22 @@ export default async function PersonPage({
         }
       />
 
+      <ProfileExpertise
+        items={expertise.data}
+        total={expertise.meta.total}
+        pagination={{
+          meta: expertise.meta,
+          hrefForPage: (target) =>
+            `${buildHref(`/people/${id}`, { page, expertisePage: target })}#expertise`,
+        }}
+      />
+
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Knowledge areas with evidence</CardTitle>
           <CardDescription>
             Where {person.name} has recorded evidence, listed alphabetically.
-            Continuum records where knowledge lives; it does not score or rank
-            people.
+            See expertise above for evidence-based coverage in each area.
           </CardDescription>
         </CardHeader>
         {person.knowledgeAreas.length === 0 ? (

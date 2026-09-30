@@ -27,7 +27,7 @@ describe("KnowledgeService", () => {
         findMany: vi.fn(),
         findUnique: vi.fn(),
       },
-      evidence: { groupBy: vi.fn() },
+      evidence: { groupBy: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
       employee: { findMany: vi.fn() },
     };
 
@@ -86,11 +86,13 @@ describe("KnowledgeService", () => {
       businessObjectCount: 2,
       evidenceCount: 14,
       contributorCount: 2,
+      effectiveExpertCount: 0,
       lastEvidenceAt: new Date("2026-08-23T00:00:00.000Z"),
     });
     expect(result.data[1]).toMatchObject({
       businessObjectCount: 0,
       evidenceCount: 0,
+      effectiveExpertCount: 0,
       contributorCount: 0,
       lastEvidenceAt: null,
     });
@@ -99,6 +101,25 @@ describe("KnowledgeService", () => {
         where: { knowledgeAreaId: { in: [line4.id, hydraulics.id] } },
       }),
     );
+  });
+
+  it("batches scored expertise for the current list page", async () => {
+    const { prisma, service } = createService();
+    prisma.knowledgeArea.findMany.mockResolvedValue([line4]);
+    prisma.knowledgeArea.count.mockResolvedValue(1);
+    prisma.evidence.groupBy.mockResolvedValue([]);
+    prisma.evidence.findMany.mockResolvedValue([
+      {
+        knowledgeAreaId: line4.id,
+        employeeId: "emp_budi",
+        type: "INCIDENT_RESOLVED",
+        strength: 1,
+        occurredAt: new Date("2026-08-01T00:00:00Z"),
+      },
+    ]);
+    const result = await service.list({ page: 1, pageSize: 10, sort: "name" });
+    expect(result.data[0]?.effectiveExpertCount).toBe(1);
+    expect(prisma.evidence.findMany).toHaveBeenCalledOnce();
   });
 
   it("returns 404 for an unknown knowledge area", async () => {

@@ -74,6 +74,7 @@ export interface KnowledgeAreaSummary extends Reference {
   businessObjectCount: number;
   evidenceCount: number;
   contributorCount: number;
+  effectiveExpertCount: number;
   lastEvidenceAt: string | null;
 }
 
@@ -125,6 +126,69 @@ export interface EmployeeDetail extends EmployeeSummary {
         department: Reference;
       }
   >;
+}
+
+export interface ExpertiseContributor {
+  employee: Reference & {
+    jobTitle: string;
+    status: EmployeeStatus;
+    department: Reference;
+  };
+  expertiseScore: number;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  evidenceCount: number;
+  lastEvidenceAt: string | null;
+  evidenceByType: Array<{ type: EvidenceType; count: number }>;
+  evidence: Array<{
+    id: string;
+    type: EvidenceType;
+    title: string;
+    occurredAt: string;
+    strength: number;
+    weight: number;
+    recencyMultiplier: number;
+    contribution: number;
+  }>;
+}
+
+export interface KnowledgeExperts {
+  data: {
+    knowledgeArea: Pick<
+      KnowledgeAreaSummary,
+      | "id"
+      | "name"
+      | "businessCriticality"
+      | "knowledgeDecayRate"
+      | "department"
+    >;
+    effectiveExpertCount: number;
+    totalExpertise: number;
+    contributors: ExpertiseContributor[];
+  };
+  meta: Paginated<ExpertiseContributor>["meta"] & { asOf: string };
+}
+
+export interface EmployeeExpertise {
+  knowledgeArea: Pick<
+    KnowledgeAreaSummary,
+    "id" | "name" | "businessCriticality" | "department"
+  >;
+  expertiseScore: number;
+  confidence: ExpertiseContributor["confidence"];
+  evidenceCount: number;
+  lastEvidenceAt: string | null;
+}
+
+export interface ExpertSearch {
+  data: Array<{
+    knowledgeArea: Pick<
+      KnowledgeAreaSummary,
+      "id" | "name" | "department" | "businessCriticality"
+    >;
+    effectiveExpertCount: number;
+    topContributors: ExpertiseContributor[];
+  }>;
+  meta: { asOf: string; query: string; total: number };
 }
 
 export interface EvidenceItem {

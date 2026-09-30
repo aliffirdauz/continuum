@@ -24,7 +24,7 @@ Phase 2, core data, is complete. Its full acceptance passed on 2026-09-27. It ad
 - read-only, validated, paginated REST resources for every core entity;
 - an inventory dashboard, a searchable knowledge explorer, knowledge area detail pages with evidence, and a people directory with profiles.
 
-Expertise scores, risk levels, simulation, and transfer planning belong to later phases and are intentionally absent. See [`docs/DEVELOPMENT_PHASES.md`](docs/DEVELOPMENT_PHASES.md) for the complete roadmap and the Phase 2 decisions.
+Phase 3, the expertise engine, is complete. It adds evidence-weighted, recency-aware expertise scores, confidence labels, effective expert counts (inverse HHI), and an Expert Finder. Knowledge detail and people profiles now show expertise in the context of individual knowledge areas, with traceable evidence. Risk levels, simulation, and transfer planning belong to later phases. See [`docs/DEVELOPMENT_PHASES.md`](docs/DEVELOPMENT_PHASES.md) for the formula decisions and roadmap, and [`docs/testing/PHASE_3_TEST_CASES.md`](docs/testing/PHASE_3_TEST_CASES.md) for acceptance evidence.
 
 ## Architecture
 
@@ -168,7 +168,7 @@ pnpm test:e2e
 
 They default to `http://localhost:3001/api/v1` and `http://localhost:3000`; override them with `API_BASE_URL` and `E2E_BASE_URL`. Both sign in with `DEMO_USER_PASSWORD` or `E2E_PASSWORD`, which default to the development password.
 
-Phase-specific manual and automated acceptance cases are documented in [`docs/testing/PHASE_1_TEST_CASES.md`](docs/testing/PHASE_1_TEST_CASES.md) and [`docs/testing/PHASE_2_TEST_CASES.md`](docs/testing/PHASE_2_TEST_CASES.md).
+Phase-specific manual and automated acceptance cases are documented in [`docs/testing/PHASE_1_TEST_CASES.md`](docs/testing/PHASE_1_TEST_CASES.md), [`docs/testing/PHASE_2_TEST_CASES.md`](docs/testing/PHASE_2_TEST_CASES.md), and [`docs/testing/PHASE_3_TEST_CASES.md`](docs/testing/PHASE_3_TEST_CASES.md).
 
 ## Database Workflows
 

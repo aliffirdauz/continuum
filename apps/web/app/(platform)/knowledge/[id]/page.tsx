@@ -7,6 +7,7 @@ import { cache } from "react";
 import { CriticalityMeter } from "@/components/criticality-meter";
 import { EmptyState } from "@/components/empty-state";
 import { EvidenceTable } from "@/components/evidence-table";
+import { ExpertiseCoverage } from "@/components/expertise-coverage";
 import { PageHeader } from "@/components/page-header";
 import { PaginationNav } from "@/components/pagination-nav";
 import { PersonAvatar } from "@/components/person-avatar";
@@ -23,6 +24,7 @@ import {
   evidenceTypes,
   type EvidenceItem,
   type KnowledgeAreaDetail,
+  type KnowledgeExperts,
   type Paginated,
 } from "@/lib/api-types";
 import {
@@ -84,12 +86,17 @@ export default async function KnowledgeDetailPage({
   const query = await searchParams;
   const type = parseOption(query.type, evidenceTypes);
   const page = parsePage(query.page);
-  const [area, evidence] = await Promise.all([
+  const expertPage = parsePage(query.expertPage);
+  const [area, evidence, experts] = await Promise.all([
     getKnowledgeArea(id),
     apiGet<Paginated<EvidenceItem>>(
       `/knowledge/${encodeURIComponent(id)}/evidence`,
       { type, page, pageSize: EVIDENCE_PAGE_SIZE },
     ),
+    apiGet<KnowledgeExperts>(`/knowledge/${encodeURIComponent(id)}/experts`, {
+      page: expertPage,
+      pageSize: 20,
+    }),
   ]);
   const hrefFor = (options: { type?: string; page?: number }) =>
     `${buildHref(`/knowledge/${id}`, options)}#evidence`;
@@ -158,6 +165,17 @@ export default async function KnowledgeDetailPage({
           </div>
         </dl>
       </Card>
+
+      <ExpertiseCoverage
+        contributors={experts.data.contributors}
+        effectiveExpertCount={experts.data.effectiveExpertCount}
+        total={experts.meta.total}
+        pagination={{
+          meta: experts.meta,
+          hrefForPage: (target) =>
+            `${buildHref(`/knowledge/${id}`, { type, page, expertPage: target })}#expertise`,
+        }}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card id="evidence" className="scroll-mt-24 overflow-hidden">

@@ -12,6 +12,7 @@ import { DatabaseModule } from "./database/database.module";
 import { DepartmentsModule } from "./departments/departments.module";
 import { EmployeesModule } from "./employees/employees.module";
 import { EvidenceModule } from "./evidence/evidence.module";
+import { ExpertiseModule } from "./expertise/expertise.module";
 import { HealthModule } from "./health/health.module";
 import { KnowledgeModule } from "./knowledge/knowledge.module";
 import { RedisModule } from "./redis/redis.module";
@@ -34,6 +35,7 @@ import { RedisModule } from "./redis/redis.module";
     KnowledgeModule,
     BusinessObjectsModule,
     EvidenceModule,
+    ExpertiseModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

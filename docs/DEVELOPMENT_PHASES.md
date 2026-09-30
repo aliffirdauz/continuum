@@ -1,6 +1,6 @@
 # Development Phase Tracker
 
-Last updated: 2026-09-27
+Last updated: 2026-09-30
 
 This document tracks delivery against `continuum_project_spec.md`. A phase is complete only when implementation, automated regression, manual test documentation, and operational documentation are all present.
 
@@ -10,7 +10,7 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 | ----- | ------------------------- | -------- |
 | 1     | Foundation                | Complete |
 | 2     | Core data                 | Complete |
-| 3     | Expertise engine          | Planned  |
+| 3     | Expertise engine          | Complete |
 | 4     | Risk engine               | Planned  |
 | 5     | Unavailability simulation | Planned  |
 | 6     | Knowledge transfer        | Planned  |
@@ -125,16 +125,49 @@ Evidence is recorded in [`testing/PHASE_2_TEST_CASES.md`](testing/PHASE_2_TEST_C
 
 ## Phase 3: Expertise Engine
 
-Status: **Planned**
+Status: **Complete** — formulas, read-only API, web surfaces, automated regression, focused Chromium keyboard/outage acceptance, and operational documentation are present. Evidence: [`testing/PHASE_3_TEST_CASES.md`](testing/PHASE_3_TEST_CASES.md).
 
-Planned outcomes:
+Scope:
 
-- configurable evidence weights;
-- recency decay and evidence diversity;
-- deterministic expertise and confidence calculations;
-- effective expert count using inverse HHI;
-- expert distribution and explainability;
-- focused numerical boundary tests.
+- Calculate evidence-based expertise per employee and knowledge area, with configurable evidence-type weights, knowledge-specific recency decay, diversity, and an explainable confidence label.
+- Calculate effective expert count from the distribution of unrounded expertise contributions, not the number of people with evidence.
+- Expose read-only `GET /knowledge/:id/experts`, `GET /employees/:id/expertise`, and `GET /expert-search?q=`; build `/experts`, add expertise distribution and evidence explanation to knowledge detail, and show per-area expertise on people profiles.
+- Show effective expert count in the knowledge explorer/detail. Keep the dashboard's risk presentation for Phase 4.
+
+Exclusions:
+
+- Risk scores, risk levels, department risk, and historical risk snapshots (Phase 4); unavailability simulation (Phase 5); transfer planning (Phase 6).
+- Domain write endpoints, background recalculation/BullMQ, third-party connectors, and a cross-area employee leaderboard. `User` and `Employee` remain separate.
+
+Scoring decisions (see specification sections 9–12):
+
+- Default evidence weights: `INCIDENT_RESOLVED=1.00`, `PROCESS_EXECUTION=0.95`, `MAINTENANCE_ACTIVITY=0.95`, `PROJECT_PARTICIPATION=0.85`, `CODE_CONTRIBUTION=0.85`, `TICKET_RESOLVED=0.80`, `DOCUMENT_AUTHORED=0.75`, `CODE_REVIEW=0.65`, `DOCUMENT_CONTRIBUTION=0.60`, `TRAINING_COMPLETED=0.50`, `PEER_CONFIRMATION=0.45`. Supply overrides through the scoring function, not hardcoded branches.
+- Recency uses the spec's inclusive day bands: `0–90: 1.00`, `91–180: 0.90`, `181–365: 0.75`, `366–730: 0.55`, `>730: 0.35`. Blend the per-area decay rate as `recency = 1 - (1 - band) × min(1, knowledgeDecayRate × 20)`. A rate of zero disables aging; evidence after `asOf` is excluded. The earlier proposal to use `exp(-rate × ageInYears)` was rejected after checking the seed: its `0.02–0.06` rates barely reduced evidence older than two years, undermining scenario D.
+- For each employee/area: `base = Σ(typeWeight × strength × recency)`; `diversity = min(uniqueTypes / 5, 1)`; `score = min(100, base × (0.7 + 0.3 × diversity) × K)`, displayed to one decimal. Use a single global `K=12`, calibrated against the four seeded scenarios; keep the unrounded pre-cap contribution for inverse HHI so display rounding/capping cannot distort shares. Treat the spec's example scores as directional, not exact fixtures: no single global linear scale can reproduce all example values from this seed.
+- Confidence summarizes evidence quality, not a probability: HIGH when count ≥5, latest evidence ≤180 days old, and ≥3 distinct types; MEDIUM when count ≥2 and either latest evidence ≤365 days old or ≥2 distinct types; LOW otherwise. No evidence yields no expert entry/confidence. Show the count, types, and dates behind the label.
+- For positive contributions, `share_i = contribution_i / Σ(contributions)` and `effectiveExpertCount = 1 / Σ(share_i²)`; return zero when the sum is zero. One holder gives 1, two equal holders give 2. Keep calculations independent of NestJS/Prisma and accept an explicit `asOf` date; API defaults to request time when omitted, while tests pass `asOf` explicitly.
+
+API and product decisions:
+
+- `GET /knowledge/:id/experts`: validated ID and optional `asOf`; return area context, effective expert count, and contributors sorted by score descending, then name and ID. Paginate contributors using the existing `{ data, meta }` conventions; return 404 for unknown areas.
+- `GET /employees/:id/expertise`: validated ID, optional `asOf` and pagination; sort this person's knowledge areas by score, return an empty list for a known person without evidence and 404 for an unknown person. Add filters only if the page needs them.
+- `GET /expert-search?q=`: require a nonblank query; return up to five matched knowledge areas with up to three contributors each, with explicit limits for both. Search knowledge names/descriptions using existing PostgreSQL search infrastructure; make match ordering deterministic and validate it against realistic queries. Do not flatten people from different areas into a leaderboard.
+- `/experts` supports search, disambiguation, evidence explanation, and links to profiles. Knowledge detail shows the distribution and effective count; a profile shows scores in the context of individual areas, business criticality, and linked business objects. Use coverage language, not employee performance or Phase 4 risk labels. Preserve server-side `requireSession()` and token confinement.
+
+Seed acceptance at explicit `asOf=2026-09-01T00:00:00Z`:
+
+- `ka_line4_troubleshooting`: Budi clearly dominates Andri and the two weak contributors; effective count is close to 1 (calibration probe: about 1.49).
+- `ka_month_end_closing`: Sarah > Nadia > Fajar, with moderately distributed coverage (probe: about 2.66 effective experts).
+- `ka_authentication_service`: Kevin, Raka, and Dina are close, near 3 effective experts (probe: about 2.99).
+- `ka_legacy_supplier_import`: older evidence reduces scores relative to comparable recent evidence. Do not assert that it is the lowest-scoring area in the _entire_ dataset without checking every area. The spec's example 88/65/48 implies approximately 2.75 effective experts, not the 1.5–2 suggested elsewhere; validate the distribution shape rather than the literal figures.
+
+Implementation and acceptance sequence:
+
+1. Finish and verify pure scoring/recency/confidence/HHI functions with boundary tests and seed calibration; keep weights configurable and validate malformed dates/rates at the API boundary.
+2. Add Prisma-backed expertise service and read-only endpoints following the existing module/DTO/pagination patterns. Fetch evidence in batches for search/results, not one query per contributor. Provide traceable evidence IDs and contribution breakdown for explainability.
+3. Implement Expert Finder, knowledge-detail distribution, and per-area profile coverage with loading, empty, error, responsive, and keyboard states; keep client-visible sessions free of API tokens.
+4. Test authorization, validation (`400`), unknown records (`404`), no-evidence (`200` with empty data), pagination/order, time filtering, seed scenarios, and repeatability with explicit `asOf` in API integration tests and critical Playwright flows (at most three workers).
+5. Create `testing/PHASE_3_TEST_CASES.md`, rerun Phase 1/2 regression plus format, lint, typecheck, unit tests, builds, API integration, and browser tests. Record actual results and limitations; update README and architecture docs before marking Phase 3 complete.
 
 ## Phase 4: Risk Engine
 

@@ -5,6 +5,8 @@ import { paginate, toSkipTake } from "../common/pagination";
 import { departmentReference } from "../common/references";
 import { PrismaService } from "../database/prisma.service";
 import { emptyRollup, rollUpEvidence } from "../evidence/evidence-rollup";
+import { effectiveExpertCount } from "../expertise/concentration";
+import { isMeaningfulExpertise, scoreExpertise } from "../expertise/scoring";
 import type { KnowledgeQueryDto } from "./dto/knowledge-query.dto";
 import { buildKnowledgeOrderBy, buildKnowledgeWhere } from "./knowledge-query";
 
@@ -40,9 +42,53 @@ export class KnowledgeService {
       this.prisma.knowledgeArea.count({ where }),
     ]);
     const activity = await this.contributionsByArea(areas.map(({ id }) => id));
+    const asOf = new Date();
+    const evidence = areas.length
+      ? await this.prisma.evidence.findMany({
+          where: {
+            knowledgeAreaId: { in: areas.map(({ id }) => id) },
+            occurredAt: { lte: asOf },
+          },
+          select: {
+            knowledgeAreaId: true,
+            employeeId: true,
+            type: true,
+            strength: true,
+            occurredAt: true,
+          },
+        })
+      : [];
+    const grouped = new Map<string, typeof evidence>();
+    for (const row of evidence) {
+      const key = `${row.knowledgeAreaId}:${row.employeeId}`;
+      const group = grouped.get(key) ?? [];
+      group.push(row);
+      grouped.set(key, group);
+    }
+    const countByArea = new Map<string, number[]>();
+    const decayById = new Map(
+      areas.map(({ id, knowledgeDecayRate }) => [id, knowledgeDecayRate]),
+    );
+    for (const group of grouped.values()) {
+      const areaId = group[0]!.knowledgeAreaId;
+      const score = scoreExpertise(group, {
+        asOf,
+        knowledgeDecayRate: decayById.get(areaId)!,
+      });
+      if (isMeaningfulExpertise(score.rawScore)) {
+        const scores = countByArea.get(areaId) ?? [];
+        scores.push(score.rawScore);
+        countByArea.set(areaId, scores);
+      }
+    }
 
     return paginate(
-      areas.map((area) => toSummary(area, activity.get(area.id))),
+      areas.map((area) => ({
+        ...toSummary(area, activity.get(area.id)),
+        effectiveExpertCount: effectiveExpertCount(
+          countByArea.get(area.id) ?? [],
+        ),
+      })),
       total,
       query,
     );

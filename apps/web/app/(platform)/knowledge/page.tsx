@@ -27,7 +27,7 @@ import type {
   KnowledgeAreaSummary,
   Paginated,
 } from "@/lib/api-types";
-import { formatDate, pluralize } from "@/lib/format";
+import { formatDate, formatPercent, pluralize } from "@/lib/format";
 import {
   buildHref,
   parseId,
@@ -198,7 +198,12 @@ export default async function KnowledgePage({
                 <TableHead scope="col" className="hidden md:table-cell">
                   Department
                 </TableHead>
-                <TableHead scope="col">Criticality</TableHead>
+                <TableHead scope="col" className="hidden sm:table-cell">
+                  Criticality
+                </TableHead>
+                <TableHead scope="col" className="text-right">
+                  Effective experts
+                </TableHead>
                 <TableHead
                   scope="col"
                   className="hidden text-right lg:table-cell"
@@ -222,7 +227,7 @@ export default async function KnowledgePage({
             <TableBody>
               {areas.data.map((area) => (
                 <TableRow key={area.id}>
-                  <TableCell className="min-w-52">
+                  <TableCell className="min-w-0 sm:min-w-52">
                     <Link
                       href={`/knowledge/${area.id}`}
                       className="rounded font-medium text-slate-900 underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
@@ -235,12 +240,18 @@ export default async function KnowledgePage({
                         {` · ${area.department.name}`}
                       </span>
                     </p>
+                    <p className="mt-1 text-xs text-slate-600 sm:hidden">
+                      Criticality {formatPercent(area.businessCriticality)}
+                    </p>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {area.department.name}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <CriticalityMeter value={area.businessCriticality} />
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
+                    {area.effectiveExpertCount.toFixed(1)}
                   </TableCell>
                   <TableCell className="hidden text-right tabular-nums lg:table-cell">
                     {area.contributorCount}

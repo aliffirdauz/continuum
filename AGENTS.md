@@ -19,9 +19,11 @@ Phase 1 is complete, including its container acceptance tests. It provides infra
 
 Phase 2, core data, is complete, including its browser and container acceptance tests. It adds the domain schema, the deterministic Northstar seed, read-only domain endpoints, and the dashboard, knowledge, and people pages. Its scope, exclusions, and decisions are recorded in `docs/DEVELOPMENT_PHASES.md`.
 
+Phase 3, expertise, is complete. Formula functions, protected read-only endpoints, and web surfaces are implemented; see `docs/DEVELOPMENT_PHASES.md` and `docs/testing/PHASE_3_TEST_CASES.md` for decisions and acceptance evidence.
+
 Do not mistake an authentication `User` for the domain `Employee`. They have different responsibilities and are deliberately unlinked.
 
-Do not add expertise scoring, risk calculation, simulation, transfer planning, real connectors, AI, Neo4j, or microservices before their scheduled phase.
+Do not add risk calculation, simulation, transfer planning, real connectors, AI, Neo4j, or microservices before their scheduled phase.
 
 ## Architecture Rules
 
