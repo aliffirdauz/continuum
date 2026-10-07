@@ -1,6 +1,6 @@
 # Development Phase Tracker
 
-Last updated: 2026-09-30
+Last updated: 2026-10-03
 
 This document tracks delivery against `continuum_project_spec.md`. A phase is complete only when implementation, automated regression, manual test documentation, and operational documentation are all present.
 
@@ -11,7 +11,7 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 | 1     | Foundation                | Complete |
 | 2     | Core data                 | Complete |
 | 3     | Expertise engine          | Complete |
-| 4     | Risk engine               | Planned  |
+| 4     | Risk engine               | Complete |
 | 5     | Unavailability simulation | Planned  |
 | 6     | Knowledge transfer        | Planned  |
 | 7     | Product polish            | Planned  |
@@ -171,15 +171,48 @@ Implementation and acceptance sequence:
 
 ## Phase 4: Risk Engine
 
-Status: **Planned**
+Status: **Complete** — pure formula, protected API, explicit knowledge-admin snapshot capture, forward migration, and server-rendered risk surfaces are implemented. Format/lint/typecheck/unit/build, migration and seed checks, API integration (**68 passed**), regular Chromium E2E (**10 passed; two opt-in outage cases skipped**), and the Phase 4 local visual/keyboard/outage walkthrough (**1 passed**) are documented in [`testing/PHASE_4_TEST_CASES.md`](testing/PHASE_4_TEST_CASES.md). The acceptance owner reviewed the dashboard, mobile detail, and outage screenshots and approved the visual result on 2026-10-03. The unrelated opt-in Phase 3 outage case was not required to close Phase 4.
 
-Planned outcomes:
+Goal: show where **knowledge areas** are vulnerable and why, without rating employees. The dashboard becomes a risk overview rather than only an inventory. Keep Phase 3 expertise scoring and its `asOf` semantics unchanged.
 
-- concentration, criticality, freshness, and documentation-gap factors;
-- explainable knowledge risk scores and levels;
-- organization and department risk views;
-- historical risk snapshots;
-- formula versioning and calculation input auditability.
+Scope:
+
+- Pure, deterministic 0–100 knowledge-risk calculation with business criticality, effective-expert concentration, evidence freshness, and documentation gap; show the four normalized inputs, their weighted contributions, risk level, effective expert count, `asOf`, and a formula version.
+- Protected, read-only knowledge risk endpoint and batched organization/department risk summaries; dashboard distribution, highest-risk knowledge areas, knowledge explorer risk filter, and knowledge detail explanation. Use deterministic ties and bounded lists/pagination.
+- Persist dated risk snapshots with formula version and a compact calculation-input audit payload; make repeated capture for the same area/date/version idempotent. Display history only when actual snapshots exist, not a fabricated trend.
+- Add reproducible API, formula, migration, and browser acceptance evidence in `testing/PHASE_4_TEST_CASES.md`.
+
+Exclusions: unavailability simulation (Phase 5); transfer plans or risk improvement claims (Phase 6); a worker/queue, third-party ingestion, write APIs for ordinary domain records, cross-person rankings, or advanced charting for its own sake. Do not add dependencies for simple visualization.
+
+Evidence from the existing deterministic seed at `asOf=2026-09-01T00:00:00Z` (calculated from `buildEvidence()`, `scoreExpertise()` and inverse HHI):
+
+| Knowledge area         | Criticality | Effective experts | Newest evidence (days old) | Documentation evidence (newest days old) |
+| ---------------------- | ----------: | ----------------: | -------------------------: | ---------------------------------------: |
+| Line 4 troubleshooting |        0.96 |              1.49 |                          9 |                            2 records; 70 |
+| Month-end closing      |        0.90 |              2.66 |                          3 |                           2 records; 120 |
+| Authentication service |        0.87 |              2.99 |                         15 |                            3 records; 75 |
+| Legacy supplier import |        0.55 |              1.46 |                        150 |                           1 record; 1400 |
+| Bank reconciliation    |        0.75 |              2.43 |                          6 |                                     none |
+
+**Scoring decision (agreed: calibrate against seed rather than copy contradictory illustrative numbers):** spec section 14's suggested additive formula and default levels cannot simultaneously produce Line 4 **CRITICAL**, month-end **MEDIUM**, and authentication **LOW**: authentication's criticality alone contributes 34.8/100, while even maximum concentration leaves a fresh, documented Line 4 at most 73.4/100. Use a criticality-weighted **exposure** score instead: `risk = 100 × businessCriticality × (0.75 × concentration + 0.15 × freshness + 0.10 × documentationGap)`. Levels, computed on the unrounded score: `LOW < 10`, `MEDIUM < 30`, `HIGH < 45`, `CRITICAL >= 45`. This uses a different scale distribution from the illustrative 86/100 example; do not claim exact example scores. Bump the formula version if any coefficients, bands, or level boundaries change.
+
+- `concentration = 1` for zero effective experts; otherwise `clamp((3 - effectiveExpertCount) / 2, 0, 1)`. Zero and a single holder both score maximum concentration; explain the difference using the separate effective count and evidence count.
+- Freshness and documentation gap use the same inclusive UTC age bands: `0–90 days: 0`, `91–180: 0.25`, `181–365: 0.50`, `366–730: 0.75`, `>730: 1`. No eligible evidence/documentation yields 1. Documentation means eligible `DOCUMENT_AUTHORED` or `DOCUMENT_CONTRIBUTION`, using its latest date; recent incidents do not erase a stale-documentation gap.
+- At the seeded reference date, formula probes give Line 4 **54.4 CRITICAL**, month-end **13.8 MEDIUM**, authentication **0.2 LOW**, legacy supplier import **39.4 HIGH** (aged documentation), and bank reconciliation **23.5 MEDIUM** (no documentation). These are calibration checks, not hardcoded overrides; assert levels and reasonable score ranges in tests.
+
+Calculation contract:
+
+- Evaluate evidence only on or before explicit `asOf` (UTC), defaulting to request time. Reuse **uncapped, unrounded** Phase 3 expertise contributions for effective expert count; zero evidence must be considered exposed, not safe.
+- Criticality is the knowledge area's stored 0–1 value. Formula weights, thresholds, scale, and null behavior belong in one versioned pure module. Round only at the API presentation boundary; compute levels from the unrounded score. Explain each factor in the response so the UI never needs to reimplement the formula.
+- The existing model has no historical `createdAt`-bounded evidence replay semantics or audit for source mutations. A snapshot must record the score, factors, `asOf`, capture time, and version **as calculated then**; it must not claim that a later recomputation of an old `asOf` reconstructs the original source state. Use explicit administrative/batch capture first, rather than introduce BullMQ just for 25 seeded areas.
+
+Implementation sequence:
+
+1. Record calibrated formula, level boundaries, and expected seed ordering here. Start RED/GREEN tests for pure risk factors, zero evidence, missing documentation, date boundaries, score bounds, and formula version.
+2. Compose risk computation over batched Phase 3 evidence/area data without N+1 queries; expose authenticated `GET /knowledge/:id/risk` plus bounded dashboard risk distribution, departments, and highest-risk knowledge endpoints. Decide whether a POST recalculation means read-only recomputation or persisted snapshot, and authorize any write explicitly.
+3. Add the forward-only snapshot migration with a uniqueness key for area + UTC snapshot date + formula version and persisted factor input values. Test idempotency, stable ordering, and read-only historical retrieval; keep snapshot capture separate from ordinary GETs.
+4. Update dashboard, knowledge explorer, and knowledge detail, with clear factor labels, empty/error/loading, keyboard, and narrow-screen states. Do not label a person as risky.
+5. Add integration tests for auth, validation, 404, pagination, dates, snapshot persistence, and seeded scenarios; run formatting, lint, typecheck, unit, builds, migration/seed checks, integration and Playwright tests on rebuilt Compose. Record actual command results and hands-on acceptance before marking **Complete**.
 
 ## Phase 5: Unavailability Simulation
 

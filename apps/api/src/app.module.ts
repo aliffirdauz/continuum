@@ -16,6 +16,7 @@ import { ExpertiseModule } from "./expertise/expertise.module";
 import { HealthModule } from "./health/health.module";
 import { KnowledgeModule } from "./knowledge/knowledge.module";
 import { RedisModule } from "./redis/redis.module";
+import { RiskModule } from "./risk/risk.module";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { RedisModule } from "./redis/redis.module";
     BusinessObjectsModule,
     EvidenceModule,
     ExpertiseModule,
+    RiskModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

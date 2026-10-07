@@ -21,9 +21,11 @@ Phase 2, core data, is complete, including its browser and container acceptance 
 
 Phase 3, expertise, is complete. Formula functions, protected read-only endpoints, and web surfaces are implemented; see `docs/DEVELOPMENT_PHASES.md` and `docs/testing/PHASE_3_TEST_CASES.md` for decisions and acceptance evidence.
 
+Phase 4, knowledge-area risk, is complete. Protected risk reads, knowledge-admin-only snapshot capture, a forward migration, and server-rendered risk surfaces are implemented; automated and visual/keyboard/outage acceptance evidence is recorded in `docs/testing/PHASE_4_TEST_CASES.md`.
+
 Do not mistake an authentication `User` for the domain `Employee`. They have different responsibilities and are deliberately unlinked.
 
-Do not add risk calculation, simulation, transfer planning, real connectors, AI, Neo4j, or microservices before their scheduled phase.
+Do not add simulation, transfer planning, real connectors, AI, Neo4j, or microservices before their scheduled phase.
 
 ## Architecture Rules
 

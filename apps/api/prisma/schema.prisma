@@ -122,6 +122,7 @@ model KnowledgeArea {
   department      Department                @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   businessObjects KnowledgeBusinessObject[]
   evidence        Evidence[]
+  riskSnapshots   KnowledgeRiskSnapshot[]
 
   @@index([departmentId])
   @@index([category])
@@ -185,4 +186,27 @@ model Evidence {
   @@index([employeeId, occurredAt(sort: Desc)])
   @@index([type])
   @@map("evidence")
+}
+
+model KnowledgeRiskSnapshot {
+  id                         String   @id @default(cuid())
+  knowledgeAreaId            String   @map("knowledge_area_id")
+  snapshotDate               DateTime @map("snapshot_date") @db.Date
+  asOf                       DateTime @map("as_of") @db.Timestamptz(3)
+  capturedAt                 DateTime @default(now()) @map("captured_at") @db.Timestamptz(3)
+  formulaVersion             String   @map("formula_version")
+  riskScore                  Float    @map("risk_score")
+  riskLevel                  String   @map("risk_level")
+  businessCriticality        Float    @map("business_criticality")
+  effectiveExpertCount       Float    @map("effective_expert_count")
+  evidenceCount              Int      @map("evidence_count")
+  latestEvidenceAgeDays      Int?     @map("latest_evidence_age_days")
+  latestDocumentationAgeDays Int?     @map("latest_documentation_age_days")
+  factors                    Json
+
+  knowledgeArea KnowledgeArea @relation(fields: [knowledgeAreaId], references: [id], onDelete: Restrict)
+
+  @@unique([knowledgeAreaId, snapshotDate, formulaVersion])
+  @@index([knowledgeAreaId, snapshotDate(sort: Desc)])
+  @@map("knowledge_risk_snapshots")
 }

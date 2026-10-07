@@ -7,6 +7,7 @@ import { CriticalityMeter } from "@/components/criticality-meter";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { PaginationNav } from "@/components/pagination-nav";
+import { RiskBadge } from "@/components/risk-summary";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,10 +23,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { apiGet } from "@/lib/api";
-import type {
-  DepartmentSummary,
-  KnowledgeAreaSummary,
-  Paginated,
+import {
+  riskLevels,
+  type DepartmentSummary,
+  type KnowledgeAreaSummary,
+  type Paginated,
+  type HighRiskKnowledge,
 } from "@/lib/api-types";
 import { formatDate, formatPercent, pluralize } from "@/lib/format";
 import {
@@ -68,7 +71,9 @@ export default async function KnowledgePage({
     sort: parseOption(params.sort, sortValues) ?? "criticality",
   };
   const page = parsePage(params.page);
-  const [areas, departments, categories] = await Promise.all([
+  const risk = parseOption(params.risk, riskLevels);
+  const riskPage = parsePage(params.riskPage);
+  const [areas, departments, categories, ranked] = await Promise.all([
     apiGet<Paginated<KnowledgeAreaSummary>>("/knowledge", {
       search: filters.q,
       departmentId: filters.department,
@@ -79,6 +84,12 @@ export default async function KnowledgePage({
     }),
     apiGet<{ data: DepartmentSummary[] }>("/departments"),
     apiGet<{ data: string[] }>("/knowledge/categories"),
+    risk
+      ? apiGet<Paginated<HighRiskKnowledge> & { asOf: string }>(
+          "/dashboard/high-risk-knowledge",
+          { page: riskPage, pageSize: PAGE_SIZE },
+        )
+      : Promise.resolve(null),
   ]);
   const hasFilters = [filters.q, filters.department, filters.category].some(
     Boolean,
@@ -91,6 +102,88 @@ export default async function KnowledgePage({
         title="Knowledge areas"
         description="Browse what Northstar needs to know, the department that owns it, and how much evidence shows where it lives."
       />
+
+      <Card className="p-4 sm:p-5">
+        <Form
+          action="/knowledge"
+          role="search"
+          aria-label="Filter risk-ranked knowledge areas"
+          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+        >
+          <div className="space-y-1.5 sm:min-w-60">
+            <Label htmlFor="risk">Risk level</Label>
+            <NativeSelect id="risk" name="risk" defaultValue={risk ?? ""}>
+              <option value="">All risk levels</option>
+              {riskLevels.map((level) => (
+                <option key={level} value={level}>
+                  {level[0] + level.slice(1).toLowerCase()}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <Button type="submit" className="h-11">
+            Show risk-ranked areas
+          </Button>
+        </Form>
+        <p className="mt-2 text-xs text-slate-600">
+          Risk filtering applies to each fetched ranked page, not the entire
+          organization. Browse pages to see further matches. The inventory below
+          uses its own filters.
+        </p>
+      </Card>
+
+      {ranked && risk ? (
+        <Card className="overflow-hidden">
+          <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+            <h2 className="font-semibold text-slate-950">
+              Risk-ranked results · {risk[0] + risk.slice(1).toLowerCase()}
+            </h2>
+            <p className="text-xs text-slate-600">
+              Matches on ranked page {ranked.meta.page} of{" "}
+              {ranked.meta.totalPages}; {ranked.meta.total} areas in the ranked
+              list across all risk levels. Not an organization-wide count for{" "}
+              {risk.toLowerCase()} risk.
+            </p>
+          </div>
+          <ul className="divide-y divide-slate-100 px-5 sm:px-6">
+            {ranked.data
+              .filter((entry) => entry.riskLevel === risk)
+              .map((entry) => (
+                <li
+                  key={entry.knowledgeArea.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-3"
+                >
+                  <div>
+                    <Link
+                      href={`/knowledge/${entry.knowledgeArea.id}#risk`}
+                      className="rounded font-medium text-slate-900 underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
+                    >
+                      {entry.knowledgeArea.name}
+                    </Link>
+                    <p className="text-xs text-slate-600">
+                      {entry.knowledgeArea.department.name} ·{" "}
+                      {entry.effectiveExpertCount.toFixed(1)} effective experts
+                    </p>
+                  </div>
+                  <RiskBadge level={entry.riskLevel} score={entry.riskScore} />
+                </li>
+              ))}
+          </ul>
+          {ranked.data.every((entry) => entry.riskLevel !== risk) ? (
+            <p className="px-5 py-5 text-sm text-slate-600">
+              No {risk.toLowerCase()} risk areas on this ranked page. Try
+              another page or risk level.
+            </p>
+          ) : null}
+          <PaginationNav
+            label="Risk-ranked pages"
+            meta={ranked.meta}
+            hrefForPage={(target) =>
+              buildHref("/knowledge", { risk, riskPage: target })
+            }
+          />
+        </Card>
+      ) : null}
 
       <Card className="p-4 sm:p-5">
         <Form

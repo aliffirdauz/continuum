@@ -11,6 +11,7 @@ import { ExpertiseCoverage } from "@/components/expertise-coverage";
 import { PageHeader } from "@/components/page-header";
 import { PaginationNav } from "@/components/pagination-nav";
 import { PersonAvatar } from "@/components/person-avatar";
+import { RiskExplanation } from "@/components/risk-summary";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -25,7 +26,9 @@ import {
   type EvidenceItem,
   type KnowledgeAreaDetail,
   type KnowledgeExperts,
+  type KnowledgeRisk,
   type Paginated,
+  type RiskLevel,
 } from "@/lib/api-types";
 import {
   businessObjectTypeLabels,
@@ -48,6 +51,14 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 const EVIDENCE_PAGE_SIZE = 10;
+type RiskSnapshot = {
+  id: string;
+  snapshotDate: string;
+  asOf: string;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  formulaVersion: string;
+};
 
 interface KnowledgeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -87,7 +98,7 @@ export default async function KnowledgeDetailPage({
   const type = parseOption(query.type, evidenceTypes);
   const page = parsePage(query.page);
   const expertPage = parsePage(query.expertPage);
-  const [area, evidence, experts] = await Promise.all([
+  const [area, evidence, experts, risk, snapshots] = await Promise.all([
     getKnowledgeArea(id),
     apiGet<Paginated<EvidenceItem>>(
       `/knowledge/${encodeURIComponent(id)}/evidence`,
@@ -97,6 +108,13 @@ export default async function KnowledgeDetailPage({
       page: expertPage,
       pageSize: 20,
     }),
+    apiGet<{ data: KnowledgeRisk }>(
+      `/knowledge/${encodeURIComponent(id)}/risk`,
+    ),
+    apiGet<Paginated<RiskSnapshot>>(
+      `/knowledge/${encodeURIComponent(id)}/risk/snapshots`,
+      { page: 1, pageSize: 5 },
+    ),
   ]);
   const hrefFor = (options: { type?: string; page?: number }) =>
     `${buildHref(`/knowledge/${id}`, options)}#evidence`;
@@ -165,6 +183,42 @@ export default async function KnowledgeDetailPage({
           </div>
         </dl>
       </Card>
+
+      <RiskExplanation risk={risk.data} />
+      {snapshots.data.length > 0 ? (
+        <Card id="risk-history" className="scroll-mt-24">
+          <CardHeader>
+            <CardTitle>Captured risk snapshots</CardTitle>
+            <CardDescription>
+              Observations stored when a knowledge administrator captured them,
+              not retrospective recalculations.
+              {snapshots.meta.total > snapshots.data.length
+                ? ` Showing the latest ${snapshots.data.length} of ${snapshots.meta.total}.`
+                : null}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-slate-100">
+              {snapshots.data.map((snapshot) => (
+                <li
+                  key={snapshot.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                >
+                  <span className="text-sm text-slate-700">
+                    <time dateTime={snapshot.snapshotDate}>
+                      {formatDate(snapshot.snapshotDate)}
+                    </time>
+                    {` · ${snapshot.formulaVersion}`}
+                  </span>
+                  <span className="text-sm font-semibold text-slate-950 tabular-nums">
+                    {snapshot.riskLevel} · {snapshot.riskScore.toFixed(1)}/100
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <ExpertiseCoverage
         contributors={experts.data.contributors}

@@ -12,6 +12,7 @@ import Link from "next/link";
 
 import { CriticalityMeter } from "@/components/criticality-meter";
 import { PageHeader } from "@/components/page-header";
+import { RiskBadge, RiskOverview } from "@/components/risk-summary";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -36,6 +37,9 @@ import type {
   EvidenceItem,
   KnowledgeAreaSummary,
   Paginated,
+  DepartmentRisk,
+  HighRiskKnowledge,
+  RiskDistribution,
 } from "@/lib/api-types";
 import {
   evidenceTypeLabels,
@@ -77,25 +81,135 @@ function StatCard({ label, value, detail, icon: Icon }: StatCardProps) {
 
 export default async function DashboardPage() {
   await requireSession();
-  const [summary, departments, criticalKnowledge, recentEvidence] =
-    await Promise.all([
-      apiGet<DashboardSummary>("/dashboard/summary"),
-      apiGet<{ data: DepartmentSummary[] }>("/departments"),
-      apiGet<Paginated<KnowledgeAreaSummary>>("/knowledge", {
-        sort: "criticality",
-        pageSize: 6,
-      }),
-      apiGet<Paginated<EvidenceItem>>("/evidence", { pageSize: 5 }),
-    ]);
+  const [
+    summary,
+    departments,
+    criticalKnowledge,
+    recentEvidence,
+    distribution,
+    departmentRisk,
+    highRisk,
+  ] = await Promise.all([
+    apiGet<DashboardSummary>("/dashboard/summary"),
+    apiGet<{ data: DepartmentSummary[] }>("/departments"),
+    apiGet<Paginated<KnowledgeAreaSummary>>("/knowledge", {
+      sort: "criticality",
+      pageSize: 6,
+    }),
+    apiGet<Paginated<EvidenceItem>>("/evidence", { pageSize: 5 }),
+    apiGet<RiskDistribution>("/dashboard/risk-distribution"),
+    apiGet<{ asOf: string; data: DepartmentRisk[] }>(
+      "/dashboard/departments-risk",
+    ),
+    apiGet<Paginated<HighRiskKnowledge> & { asOf: string }>(
+      "/dashboard/high-risk-knowledge",
+      { page: 1, pageSize: 6 },
+    ),
+  ]);
   const { totals } = summary;
 
   return (
     <div className="space-y-7">
       <PageHeader
         eyebrow="Northstar Industries"
-        title="Knowledge overview"
-        description="The knowledge Northstar depends on, the business objects it supports, and the evidence that shows where it lives."
+        title="Knowledge risk overview"
+        description="Where knowledge areas are vulnerable and why, alongside Northstar's knowledge inventory. Risk describes areas, never people."
       />
+
+      <RiskOverview distribution={distribution} />
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Highest-risk knowledge</CardTitle>
+            <CardDescription>
+              Highest area-level risk as of{" "}
+              <time dateTime={highRisk.asOf}>{formatDate(highRisk.asOf)}</time>.{" "}
+              <Link href="/knowledge?risk=CRITICAL" className={linkClassName}>
+                Explore risk levels
+              </Link>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {highRisk.data.length === 0 ? (
+              <p className="text-sm text-slate-600">
+                No knowledge areas scored yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {highRisk.data.map((entry) => (
+                  <li
+                    key={entry.knowledgeArea.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <Link
+                        href={`/knowledge/${entry.knowledgeArea.id}`}
+                        className={linkClassName}
+                      >
+                        {entry.knowledgeArea.name}
+                      </Link>
+                      <p className="text-xs text-slate-600">
+                        {entry.knowledgeArea.department.name} ·{" "}
+                        {entry.effectiveExpertCount.toFixed(1)} effective
+                        experts
+                      </p>
+                    </div>
+                    <RiskBadge
+                      level={entry.riskLevel}
+                      score={entry.riskScore}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Department risk</CardTitle>
+            <CardDescription>
+              Area-level summary as of{" "}
+              <time dateTime={departmentRisk.asOf}>
+                {formatDate(departmentRisk.asOf)}
+              </time>
+              .
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {departmentRisk.data.length === 0 ? (
+              <p className="text-sm text-slate-600">
+                No departments scored yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {departmentRisk.data.map((entry) => (
+                  <li
+                    key={entry.department.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <Link
+                        href={`/knowledge?department=${entry.department.id}`}
+                        className={linkClassName}
+                      >
+                        {entry.department.name}
+                      </Link>
+                      <p className="text-xs text-slate-600">
+                        {pluralize(entry.knowledgeAreaCount, "knowledge area")}
+                      </p>
+                    </div>
+                    <RiskBadge
+                      level={entry.riskLevel}
+                      score={entry.riskScore}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <section
         aria-label="Inventory totals"

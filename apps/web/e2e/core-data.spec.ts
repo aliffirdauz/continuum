@@ -32,13 +32,15 @@ test.describe("signed in", () => {
 
   test("shows the knowledge inventory on the dashboard", async ({ page }) => {
     await expect(
-      page.getByRole("heading", { name: "Knowledge overview" }),
+      page.getByRole("heading", { name: "Knowledge risk overview" }),
     ).toBeVisible();
     await expect(
       page.getByRole("region", { name: "Inventory totals" }),
     ).toContainText("25");
     await expect(
-      page.getByRole("link", { name: "Production Line 4 Troubleshooting" }),
+      page
+        .getByRole("link", { name: "Production Line 4 Troubleshooting" })
+        .first(),
     ).toBeVisible();
   });
 
@@ -83,6 +85,33 @@ test.describe("signed in", () => {
         .getByRole("table", { name: /Evidence for Production Line 4/ })
         .locator("tbody tr"),
     ).toHaveCount(3);
+  });
+
+  test("filters risk-ranked areas with a keyboard and explains area-level factors", async ({
+    page,
+  }) => {
+    await expect(
+      page.getByRole("heading", { name: "Knowledge risk distribution" }),
+    ).toBeVisible();
+    await page.goto("/knowledge");
+    const select = page.getByRole("combobox", { name: "Risk level" });
+    await select.focus();
+    await select.selectOption("CRITICAL");
+    await page.keyboard.press("Tab");
+    await expect(
+      page.getByRole("button", { name: "Show risk-ranked areas" }),
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/risk=CRITICAL/);
+    await expect(page.getByText(/Risk-ranked results/)).toBeVisible();
+    await expect(
+      page.getByText(/Not an organization-wide count/),
+    ).toBeVisible();
+    await page
+      .locator('a[href="/knowledge/ka_line4_troubleshooting#risk"]')
+      .click();
+    await expect(page.locator("#risk")).toContainText("Documentation gap");
+    await expect(page.locator("#expertise")).toBeVisible();
   });
 
   test("filters people and opens a profile with per-area expertise", async ({
@@ -218,6 +247,7 @@ test.describe("signed in", () => {
     for (const path of [
       "/dashboard",
       "/knowledge",
+      "/knowledge?risk=CRITICAL",
       "/knowledge/ka_line4_troubleshooting",
       "/experts?q=line+4",
       "/people/emp_budi",

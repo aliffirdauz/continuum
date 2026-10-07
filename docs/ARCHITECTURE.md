@@ -89,7 +89,7 @@ Search uses case-insensitive substring matching. `pg_trgm` GIN indexes cover the
 
 The browser never calls the API directly and never receives the API token. An API token can expire while the session cookie is still valid, so the sign-in page shows the form, instead of redirecting to the dashboard, when `reason=expired` is present.
 
-Domain endpoints remain read-only in Phase 3 and available to every authenticated role. Lists return deterministic ordering and pagination metadata where applicable; expert search groups contributors under matched knowledge areas rather than creating a cross-area leaderboard.
+Domain inventory and expertise endpoints remain read-only and available to every authenticated role. Phase 4 adds an explicit knowledge-admin-only snapshot capture; ordinary risk GETs have no write side effects. Lists return deterministic ordering and pagination metadata where applicable; expert search groups contributors under matched knowledge areas rather than creating a cross-area leaderboard.
 
 ## Startup Sequence
 
@@ -132,4 +132,10 @@ The API exposes two probes:
 
 ## Phase 3 Extension Points
 
-Phase 3 now calculates expertise on demand in the NestJS API. Formula functions under `apps/api/src/expertise/` are independent of NestJS and Prisma; the service reads evidence in batches, excludes records after an explicit `asOf` timestamp (default: request time), and exposes protected, read-only expert distribution, per-person expertise, and area-based expert search. Evidence weights, decay bands, the global score scale, confidence thresholds, and inverse HHI are recorded in [`DEVELOPMENT_PHASES.md`](DEVELOPMENT_PHASES.md). Scores are displayed per knowledge area, never as an organization-wide employee ranking. The web calls these endpoints through the existing server-only `apiGet()` path, so the token boundary is unchanged. No scoring cache, queue, or schema migration is required yet; risk calculations remain Phase 4.
+Phase 3 calculates expertise on demand in the NestJS API. Formula functions under `apps/api/src/expertise/` are independent of NestJS and Prisma; the service reads evidence in batches, excludes records after an explicit `asOf` timestamp (default: request time), and exposes protected, read-only expert distribution, per-person expertise, and area-based expert search. Evidence weights, decay bands, the global score scale, confidence thresholds, and inverse HHI are recorded in [`DEVELOPMENT_PHASES.md`](DEVELOPMENT_PHASES.md). Scores are displayed per knowledge area, never as an organization-wide employee ranking. The web calls these endpoints through the existing server-only `apiGet()` path, so the token boundary is unchanged. No scoring cache or queue is required.
+
+## Phase 4 Risk and Snapshot Boundary
+
+The pure, versioned risk formula under `apps/api/src/risk/` combines area criticality, inverse-HHI effective expert count from uncapped and unrounded Phase 3 scores, evidence freshness, and documentation age. The NestJS risk service reads areas and evidence in batches, excludes evidence after `asOf`, computes deterministic levels from unrounded scores, and returns bounded dashboard summaries and per-area explanations. The web renders these through server-only API calls; no person receives an organization-wide risk rating.
+
+`GET /api/v1/knowledge/:id/risk` and dashboard risk GETs calculate without persisting. `GET /api/v1/knowledge/:id/risk/snapshots` lists stored observations with pagination. Only `KNOWLEDGE_ADMIN` can call `POST /api/v1/knowledge/:id/risk/snapshots`, which rejects query/body parameters and captures the **current** calculation. A forward migration creates `knowledge_risk_snapshots` with a unique key on knowledge area, UTC snapshot date, and formula version; repeated captures retain the existing row and its audit inputs. Snapshots store the observed score, level, factors, effective count, evidence ages/count, `asOf`, and capture time. A later recomputation of an old `asOf` is not a historical reconstruction of mutable source records. Runtime startup applies this migration via `prisma migrate deploy`; it does not create snapshots on GET or seed.

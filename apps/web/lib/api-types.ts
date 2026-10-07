@@ -191,6 +191,54 @@ export interface ExpertSearch {
   meta: { asOf: string; query: string; total: number };
 }
 
+export const riskLevels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
+export type RiskLevel = (typeof riskLevels)[number];
+
+export interface KnowledgeRisk {
+  knowledgeArea: Pick<
+    KnowledgeAreaSummary,
+    "id" | "name" | "department" | "businessCriticality"
+  >;
+  effectiveExpertCount: number;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  weightedContributions: {
+    concentration: number;
+    freshness: number;
+    documentationGap: number;
+  };
+  factors: {
+    businessCriticality: number;
+    concentration: number;
+    freshness: number;
+    documentationGap: number;
+  };
+  formulaVersion: string;
+  evidenceCount: number;
+  latestEvidenceAgeDays: number | null;
+  latestDocumentationAgeDays: number | null;
+  asOf: string;
+}
+
+export interface RiskDistribution {
+  asOf: string;
+  totals: Record<RiskLevel, number>;
+}
+
+export interface DepartmentRisk {
+  department: Reference;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  knowledgeAreaCount: number;
+}
+
+export interface HighRiskKnowledge {
+  knowledgeArea: KnowledgeRisk["knowledgeArea"];
+  effectiveExpertCount: number;
+  riskScore: number;
+  riskLevel: RiskLevel;
+}
+
 export interface EvidenceItem {
   id: string;
   type: EvidenceType;
