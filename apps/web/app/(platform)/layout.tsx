@@ -24,7 +24,7 @@ const navigation = [
   { label: "Knowledge", icon: BookOpenText, href: "/knowledge" },
   { label: "Experts", icon: Search, href: "/experts" },
   { label: "People", icon: UsersRound, href: "/people" },
-  { label: "Simulation", icon: Activity },
+  { label: "Simulation", icon: Activity, href: "/simulate" },
   { label: "Transfers", icon: ArrowRightLeft },
   { label: "Knowledge graph", icon: Network },
 ];

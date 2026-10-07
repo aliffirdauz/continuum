@@ -1,6 +1,6 @@
 # Development Phase Tracker
 
-Last updated: 2026-10-03
+Last updated: 2026-10-08
 
 This document tracks delivery against `continuum_project_spec.md`. A phase is complete only when implementation, automated regression, manual test documentation, and operational documentation are all present.
 
@@ -12,7 +12,7 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 | 2     | Core data                 | Complete |
 | 3     | Expertise engine          | Complete |
 | 4     | Risk engine               | Complete |
-| 5     | Unavailability simulation | Planned  |
+| 5     | Unavailability simulation | Complete |
 | 6     | Knowledge transfer        | Planned  |
 | 7     | Product polish            | Planned  |
 
@@ -216,14 +216,37 @@ Implementation sequence:
 
 ## Phase 5: Unavailability Simulation
 
-Status: **Planned**
+Status: **Complete** — the acceptance owner reviewed the Phase 5 screenshots and approved the visual result on 2026-10-08. The same day, a rebuilt Compose stack passed every automated gate:
 
-Planned outcomes:
+- format, lint, typecheck, and builds, plus API unit **159/159** and web unit **55/55**;
+- schema drift check, upgrade of the existing database, and a fresh disposable database with the seed run twice;
+- API integration **76/76** (passed twice);
+- Chromium E2E **15 passed, 3 opt-in skipped**, and the Phase 5 visual/outage walkthrough **1/1**.
 
-- temporary removal or reduction of selected expertise contributions;
-- before-and-after expert count, risk, coverage, and business impact;
-- interactive simulation flow;
-- deterministic simulation regression fixtures.
+Acceptance found and fixed four defects, each with a test that failed first: a swallowed expired-session redirect, POST/GET float drift in saved runs, the form resetting after a failed submit, and Phase 4 index-name drift fixed by a forward migration. Evidence and screenshots are in [`testing/PHASE_5_TEST_CASES.md`](testing/PHASE_5_TEST_CASES.md).
+
+Goal: let a manager model an employee's temporary unavailability, compare the same knowledge areas at the same future horizon with and without that employee, and identify connected business objects. Results are hypothetical **knowledge-area** exposure, not an employee performance or operational-outage prediction.
+
+Scope and decisions:
+
+- A protected `/simulate` flow selects one active domain `Employee`, a whole-number duration of 1–365 days (default 30), and an optional department **result filter**. Authentication `User` and organizational `Employee` remain separate. Only `MANAGER` and `KNOWLEDGE_ADMIN` may create or read saved runs; the creator and knowledge admins may retrieve a run by ID. Do not expose another manager's runs through a guessed ID. Do not mutate employee status, evidence, expertise, or risk snapshots.
+- A `POST /simulations/unavailability` explicitly captures `startedAt` from the API clock, computes `horizonAt = startedAt + durationDays` in UTC, and saves immutable input and result data plus formula versions and capture time under an opaque ID. `GET /simulations/:id` only reads that saved result. Add a forward-only migration and bounded JSON/relational payload as appropriate; reject unsupported fields, forged dates, out-of-range durations, inactive/unknown employees, and unauthorized reads. There is no automatic run on page load or GET. Deterministic tests inject a clock rather than accepting backdated production requests.
+- Compare **both** baseline and unavailable scenarios at `horizonAt`, using only evidence whose occurrence is no later than the captured `startedAt`; do not imply knowledge about evidence created during the simulated future. Reuse the Phase 3 uncapped/unrounded expertise scores, inverse-HHI effective expert count, and versioned Phase 4 risk formula. In the unavailable branch, exclude the selected person's expertise score from concentration, but retain already-authored documents and historical evidence when assessing freshness/documentation: absence does not erase artifacts. Recalculate risk and effective expert count for areas with that person's eligible evidence, batching area/evidence/object reads. No artificial duration multiplier or changed Phase 4 coefficients.
+- Define area coverage as a **capacity proxy**, `100 × sum(min(100, expertiseScore_i)) / (3 × 100)`, capped at 100; count only eligible holders and omit the selected person after removal. Use the existing Phase 3 capped display expertise score for this separate proxy, while risk concentration still uses the uncapped raw score. Aggregate coverage as the mean over affected areas, not all 25 areas; return both before/after, units, and denominator. This is not a probability of business continuity or a promise of an illustrative 82% → 39% example.
+- Return stable, bounded area rows with before/after score, level, effective count, coverage, score/coverage deltas, factor explanations, and linked business objects (`impactWeight`, object criticality/type). Order by largest coverage loss, then risk increase, then area ID; deduplicate objects in a separate summary with affected area IDs, not an invented monetary-loss score. The department filter narrows returned rows and summaries, not the underlying scenario. Cap a saved run at 500 affected areas and 500 distinct objects (reject larger input with a clear limit error rather than truncate it), and paginate returned areas/objects at 20 by default, 50 maximum, with total counts and stable tie-breaks. No affected areas returns zero totals and empty lists with no divide-by-zero or fabricated impact.
+- Keep simulation display separate from actual Phase 4 snapshots and history. The UI must show the captured date, simulated horizon, assumptions, same-horizon comparison, object links, empty/error/loading states, keyboard-operable controls, and responsive before/after cards. Browser requests must use the established server-side API/token boundary.
+
+Seed calibration at `2026-09-01T00:00:00Z`, removing `emp_budi` and comparing at the **same** reference date (formula probe, not the future-horizon API output): Line 4 effective count `1.49 → 1.50`, coverage proxy `38.9% → 7.6%`, risk `54.4 CRITICAL → 54.1 CRITICAL`; hydraulic calibration `1.51 → 1.44`, `17.9% → 3.7%`, `51.4 CRITICAL → 53.8 CRITICAL`; stamping press diagnosis `2.22 → 1.23`, `16.4% → 8.4%`, `26.1 MEDIUM → 56.5 CRITICAL`; vendor maintenance `2.98 → 2.00`, `11.6% → 8.2%`, `0.5 LOW → 24.0 MEDIUM`. These are probes from the seeded evidence and current formulas, not hardcoded fixtures or acceptance values for a later date. **Important:** inverse HHI is relative to remaining holders; removing a dominant expert can make its effective count rise and risk score fall slightly despite a large absolute coverage loss. Surface both measures and never claim risk is guaranteed to increase. Do not silently alter the Phase 4 risk formula to force the spec's illustrative Line 4 HIGH → CRITICAL example; changing that policy would require an explicit formula-version and product decision.
+
+Exclusions: actual absence scheduling, second-order effects on other employees, future evidence forecasts, live business-object outages, money estimates, automatic transfer recommendations (Phase 6), background workers, and historical risk snapshot writes.
+
+Implementation sequence (TDD, RED → GREEN at each boundary):
+
+1. Unit-test pure same-horizon comparison, date boundaries, no-evidence/one-holder cases, dominant-holder HHI caveat, capacity bounds, stable ordering, and seeded scenarios. Refactor the existing risk scoring path only as necessary to reuse calculations; preserve Phase 4 endpoint behavior.
+2. Add a forward-only simulation migration and an API service with batched reads and an explicit authorized POST plus creator/admin-scoped GET. Validate request DTOs, length/pagination, unknown/inactive IDs, 401/403/404, concurrent creates, stored immutability, and that GET never writes. Keep result and versions reproducible without retrospectively recalculating mutable data.
+3. Build the server-mediated `/simulate` selection/results flow and links to affected knowledge and business objects. Verify no browser-visible API token, no employee performance rating, and usable desktop/mobile and keyboard/error/empty states.
+4. Add API integration tests for seeded Budi and a healthy-coverage employee, duration and filter semantics, object deduplication, permissions, repeat reads, and no source mutations; add Playwright run-and-revisit coverage. Document reproducible hands-on steps in `testing/PHASE_5_TEST_CASES.md` during implementation.
+5. Run format, lint, typecheck, unit tests, builds, new migration on existing and disposable fresh databases, seed repeatability, integration, and E2E on a rebuilt stack. Record actual results, manual visual sign-off, and any limitations before changing the phase from **Planned** to **Complete**. Update README/architecture only when behavior lands.
 
 ## Phase 6: Knowledge Transfer
 

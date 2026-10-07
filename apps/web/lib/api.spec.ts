@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiRequestError, apiGet, buildApiUrl } from "./api";
+import { ApiRequestError, apiGet, apiPost, buildApiUrl } from "./api";
 
 const { getToken, notFound, redirect } = vi.hoisted(() => ({
   getToken: vi.fn(),
@@ -84,6 +84,53 @@ describe("apiGet", () => {
     expect(error).toBeInstanceOf(ApiRequestError);
     expect((error as ApiRequestError).status).toBe(500);
     expect((error as Error).message).not.toContain("password");
+  });
+});
+
+describe("apiPost", () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
+    getToken.mockResolvedValue({ accessToken: "private-api-token" });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("posts JSON using the server-only token and returns the saved run", async () => {
+    fetchMock.mockResolvedValue(Response.json({ data: { id: "sim_1" } }));
+    await expect(
+      apiPost("/simulations/unavailability", {
+        employeeId: "emp_budi",
+        durationDays: 30,
+      }),
+    ).resolves.toEqual({ data: { id: "sim_1" } });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:3001/api/v1/simulations/unavailability");
+    expect(init).toMatchObject({
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Authorization: "Bearer private-api-token",
+        "Content-Type": "application/json",
+      },
+    });
+    expect(JSON.parse(init.body as string)).toEqual({
+      employeeId: "emp_budi",
+      durationDays: 30,
+    });
+  });
+
+  it("does not send a POST without a token", async () => {
+    getToken.mockResolvedValue(null);
+    await expect(
+      apiPost("/simulations/unavailability", {
+        employeeId: "emp_budi",
+        durationDays: 30,
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

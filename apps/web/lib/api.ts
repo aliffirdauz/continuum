@@ -87,3 +87,24 @@ export async function apiGet<T>(
 
   return (await response.json()) as T;
 }
+
+/** Writes from a server action only; the browser never receives the API token. */
+export async function apiPost<T>(path: string, body: object): Promise<T> {
+  const accessToken = await readAccessToken();
+  if (!accessToken) redirect(SIGN_IN_PATH);
+
+  const response = await fetch(buildApiUrl(path), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (response.status === 401) redirect(SESSION_EXPIRED_PATH);
+  if (!response.ok) throw new ApiRequestError(response.status);
+  return (await response.json()) as T;
+}

@@ -29,7 +29,26 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  simulationRuns SimulationRun[]
+
   @@map("users")
+}
+
+model SimulationRun {
+  id                     String   @id @default(cuid())
+  createdById            String   @map("created_by_id")
+  employeeId             String   @map("employee_id")
+  startedAt              DateTime @map("started_at") @db.Timestamptz(3)
+  horizonAt              DateTime @map("horizon_at") @db.Timestamptz(3)
+  durationDays           Int      @map("duration_days")
+  formulaVersion         String   @map("formula_version")
+  coverageFormulaVersion String   @map("coverage_formula_version")
+  result                 Json
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([createdById, startedAt(sort: Desc)])
+  @@map("simulation_runs")
 }
 
 enum EmployeeStatus {

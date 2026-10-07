@@ -23,6 +23,8 @@ Phase 3, expertise, is complete. Formula functions, protected read-only endpoint
 
 Phase 4, knowledge-area risk, is complete. Protected risk reads, knowledge-admin-only snapshot capture, a forward migration, and server-rendered risk surfaces are implemented; automated and visual/keyboard/outage acceptance evidence is recorded in `docs/testing/PHASE_4_TEST_CASES.md`.
 
+Phase 5, unavailability simulation, is complete. The protected API, saved-run migration, and server-mediated `/simulate` flow passed unit, migration, integration, browser, and visual/outage acceptance, and the owner approved the screenshots; see `docs/testing/PHASE_5_TEST_CASES.md`. Do not confuse saved what-if runs with observed Phase 4 risk snapshots.
+
 Do not mistake an authentication `User` for the domain `Employee`. They have different responsibilities and are deliberately unlinked.
 
 Do not add simulation, transfer planning, real connectors, AI, Neo4j, or microservices before their scheduled phase.
