@@ -13,6 +13,7 @@ import { PaginationNav } from "@/components/pagination-nav";
 import { PersonAvatar } from "@/components/person-avatar";
 import { RiskExplanation } from "@/components/risk-summary";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -87,13 +88,15 @@ export default async function KnowledgeDetailPage({
   params,
   searchParams,
 }: KnowledgeDetailPageProps) {
-  await requireSession();
+  const { user } = await requireSession();
   const { id } = await params;
 
   if (!isResourceId(id)) {
     notFound();
   }
 
+  const canPlanTransfer =
+    user.role === "MANAGER" || user.role === "KNOWLEDGE_ADMIN";
   const query = await searchParams;
   const type = parseOption(query.type, evidenceTypes);
   const page = parsePage(query.page);
@@ -139,7 +142,17 @@ export default async function KnowledgeDetailPage({
             <p>{area.description}</p>
           </>
         }
-      />
+      >
+        {canPlanTransfer ? (
+          <Button asChild variant="outline">
+            <Link
+              href={`/transfers/new?knowledgeArea=${encodeURIComponent(area.id)}`}
+            >
+              Plan knowledge transfer
+            </Link>
+          </Button>
+        ) : null}
+      </PageHeader>
 
       <Card>
         <dl className="grid divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">

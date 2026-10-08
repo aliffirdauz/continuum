@@ -74,3 +74,15 @@ export const businessObjectTypeLabels: Record<BusinessObjectType, string> = {
   REGULATION: "Regulation",
   SYSTEM: "System",
 };
+
+const DAY_IN_MS = 86_400_000;
+
+/** UTC calendar dates, as YYYY-MM-DD, `days` after today. */
+export function utcDateFromToday(days: number, now: Date = new Date()): string {
+  const today = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  return new Date(today + days * DAY_IN_MS).toISOString().slice(0, 10);
+}

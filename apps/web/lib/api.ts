@@ -89,12 +89,24 @@ export async function apiGet<T>(
 }
 
 /** Writes from a server action only; the browser never receives the API token. */
-export async function apiPost<T>(path: string, body: object): Promise<T> {
+export function apiPost<T>(path: string, body: object): Promise<T> {
+  return apiWrite<T>("POST", path, body);
+}
+
+export function apiPatch<T>(path: string, body: object): Promise<T> {
+  return apiWrite<T>("PATCH", path, body);
+}
+
+async function apiWrite<T>(
+  method: "POST" | "PATCH",
+  path: string,
+  body: object,
+): Promise<T> {
   const accessToken = await readAccessToken();
   if (!accessToken) redirect(SIGN_IN_PATH);
 
   const response = await fetch(buildApiUrl(path), {
-    method: "POST",
+    method,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",

@@ -251,3 +251,115 @@ export interface EvidenceItem {
   employee: Reference & { jobTitle: string };
   knowledgeArea: Reference;
 }
+
+export const transferStatuses = [
+  "PLANNED",
+  "IN_PROGRESS",
+  "BLOCKED",
+  "COMPLETED",
+] as const;
+export type TransferStatus = (typeof transferStatuses)[number];
+
+export const transferActivityTypes = [
+  "SHADOW_SESSION",
+  "DOCUMENTATION",
+  "INCIDENT_OBSERVATION",
+  "KNOWLEDGE_INTERVIEW",
+  "PAIR_WORK",
+  "INDEPENDENT_VALIDATION",
+  "REVIEW",
+  "TRAINING",
+] as const;
+export type TransferActivityType = (typeof transferActivityTypes)[number];
+
+export interface TransferPerson extends Reference {
+  jobTitle: string;
+  department: Reference;
+}
+
+export interface TransferPlanSummary {
+  id: string;
+  status: TransferStatus;
+  knowledgeArea: Reference & {
+    department: Reference;
+    businessCriticality: number;
+  };
+  primaryHolder: TransferPerson;
+  backupEmployee: TransferPerson;
+  coverage: {
+    baseline: number;
+    current: number;
+    target: number;
+    progress: number;
+    targetMet: boolean;
+  };
+  risk: {
+    riskScore: number;
+    riskLevel: RiskLevel;
+    effectiveExpertCount: number;
+    formulaVersion: string;
+  };
+  activities: { total: number; completed: number };
+  targetDate: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface TransferActivity {
+  id: string;
+  type: TransferActivityType;
+  title: string;
+  description: string | null;
+  status: "PLANNED" | "COMPLETED";
+  weight: number;
+  completedAt: string | null;
+  createdAt: string;
+  evidence: { id: string; type: EvidenceType; occurredAt: string } | null;
+}
+
+export interface TransferCheckpoint {
+  id: string;
+  activityId: string | null;
+  capturedAt: string;
+  backupScore: number;
+  primaryHolderScore: number;
+  effectiveExpertCount: number;
+  riskScore: number;
+  riskLevel: RiskLevel;
+  formulaVersion: string;
+  mappingVersion: string;
+}
+
+export interface TransferPlanDetail extends Omit<
+  TransferPlanSummary,
+  "activities"
+> {
+  activities: TransferActivity[];
+  checkpoints: TransferCheckpoint[];
+  recommendations: {
+    band: "FOUNDATION" | "PRACTICE" | "VALIDATION";
+    recommendations: Array<{
+      activityType: TransferActivityType | null;
+      label: string;
+    }>;
+  };
+  mappingVersion: string;
+  asOf: string;
+}
+
+export interface TransferCandidate {
+  employee: TransferPerson;
+  expertiseScore: number;
+  openPlanId: string | null;
+}
+
+export interface TransferCandidates {
+  knowledgeArea: Reference & {
+    department: Reference;
+    businessCriticality: number;
+  };
+  holders: TransferCandidate[];
+  candidates: TransferCandidate[];
+  asOf: string;
+}

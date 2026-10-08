@@ -18,6 +18,7 @@ import { KnowledgeModule } from "./knowledge/knowledge.module";
 import { RedisModule } from "./redis/redis.module";
 import { RiskModule } from "./risk/risk.module";
 import { SimulationsModule } from "./simulations/simulations.module";
+import { TransfersModule } from "./transfers/transfers.module";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { SimulationsModule } from "./simulations/simulations.module";
     ExpertiseModule,
     RiskModule,
     SimulationsModule,
+    TransfersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

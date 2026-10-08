@@ -6,15 +6,15 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 
 ## Status Summary
 
-| Phase | Scope                     | Status   |
-| ----- | ------------------------- | -------- |
-| 1     | Foundation                | Complete |
-| 2     | Core data                 | Complete |
-| 3     | Expertise engine          | Complete |
-| 4     | Risk engine               | Complete |
-| 5     | Unavailability simulation | Complete |
-| 6     | Knowledge transfer        | Planned  |
-| 7     | Product polish            | Planned  |
+| Phase | Scope                     | Status      |
+| ----- | ------------------------- | ----------- |
+| 1     | Foundation                | Complete    |
+| 2     | Core data                 | Complete    |
+| 3     | Expertise engine          | Complete    |
+| 4     | Risk engine               | Complete    |
+| 5     | Unavailability simulation | Complete    |
+| 6     | Knowledge transfer        | In progress |
+| 7     | Product polish            | Planned     |
 
 ## Phase 1: Foundation
 
@@ -250,14 +250,98 @@ Implementation sequence (TDD, RED → GREEN at each boundary):
 
 ## Phase 6: Knowledge Transfer
 
-Status: **Planned**
+Status: **In progress — awaiting acceptance-owner screenshot sign-off.** On 2026-10-08, a rebuilt Compose stack passed every automated gate:
 
-Planned outcomes:
+- format, lint, typecheck, and builds, plus API unit **199/199** and web unit **70/70**;
+- schema drift check, upgrade of the existing database, and a fresh disposable database;
+- reset command verification on a disposable database;
+- API integration **79/79** (passed five times against an accumulating database);
+- Chromium E2E **18 passed, 4 opt-in skipped** (three consecutive runs) and the flagship CRITICAL → HIGH → LOW walkthrough **1/1**.
 
-- transfer plans, candidates, activities, and progress;
-- deterministic activity recommendations;
-- measured backup expertise growth;
-- visible risk progression from critical toward low.
+Acceptance found and fixed five defects; details are in [`testing/PHASE_6_TEST_CASES.md`](testing/PHASE_6_TEST_CASES.md).
+
+Goal: let a manager plan and track deliberate backup coverage for one knowledge area, and show with evidence whether resilience actually improved (spec sections 23–25, 44, and the definition of done items 9–12). Results describe knowledge-area coverage, not employee performance.
+
+Product decisions (agreed with the acceptance owner on 2026-10-08):
+
+- **Activities become evidence.** Completing a transfer activity writes one dated `Evidence` record for the backup in the plan's knowledge area (`source = "Transfer plan"`, `sourceReference` = activity ID, and plan, activity, and mapping version in `metadata`). Expertise, effective expert count, and risk then change only through the unchanged Phase 3 and Phase 4 engines. Spec section 4.2 still holds: every expertise gain has traceable evidence. Evidence stays an append-only audit trail; a completed activity cannot be reopened, and nothing deletes its evidence.
+- **Keep `risk-v1`; demonstrate LOW with two plans.** The calibrated Phase 4 formula needs about three comparable holders for LOW. One backup can take Line 4 from CRITICAL to HIGH (minimum about 33), not to LOW. The flagship demo therefore runs two plans: Budi → Andri (CRITICAL → HIGH), then Budi → Joko (HIGH → MEDIUM → LOW). No coefficient changes, and no formula-version bump.
+- **Charts are inline server-rendered SVG** (Phase 7), with no charting dependency.
+- **The knowledge graph (`/graph`) stays deferred.** It is in neither the Phase 6/7 deliverables nor the definition of done; the navigation keeps its "Soon" label.
+
+Activity-to-evidence mapping (`transfer-v1`, a versioned constant). The evidence weights are the Phase 3 defaults, and the activity's `weight` (0.1–1.0, default 1.0) becomes evidence `strength`:
+
+| Activity                 | Evidence type           | Weight |
+| ------------------------ | ----------------------- | -----: |
+| `SHADOW_SESSION`         | `TRAINING_COMPLETED`    |   0.50 |
+| `TRAINING`               | `TRAINING_COMPLETED`    |   0.50 |
+| `INCIDENT_OBSERVATION`   | `TRAINING_COMPLETED`    |   0.50 |
+| `KNOWLEDGE_INTERVIEW`    | `DOCUMENT_CONTRIBUTION` |   0.60 |
+| `DOCUMENTATION`          | `DOCUMENT_AUTHORED`     |   0.75 |
+| `REVIEW`                 | `PEER_CONFIRMATION`     |   0.45 |
+| `PAIR_WORK`              | `PROJECT_PARTICIPATION` |   0.85 |
+| `INDEPENDENT_VALIDATION` | `PROCESS_EXECUTION`     |   0.95 |
+
+Deterministic recommendations (spec section 24), based on the backup's current expertise score in the area:
+
+| Band              | Recommended activities                                                               |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| below 40          | `SHADOW_SESSION`, `DOCUMENTATION`, `INCIDENT_OBSERVATION`, `KNOWLEDGE_INTERVIEW`     |
+| 40–70 (inclusive) | `PAIR_WORK`, `INDEPENDENT_VALIDATION`, `REVIEW`                                      |
+| above 70          | `INDEPENDENT_VALIDATION`, plus advice to assign the backup as an owner (no activity) |
+
+Data and API:
+
+- Forward-only migration: `knowledge_transfer_plans`, `transfer_activities`, and `transfer_checkpoints`.
+  - A **plan** stores the area, primary holder, backup, status (`PLANNED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`), target coverage, baseline coverage (the backup's score at creation), target date, start and completion times, and creator.
+  - **Current coverage** is the backup's live Phase 3 expertise score, never a stored copy that goes stale.
+  - A **checkpoint** is captured at plan creation and at each completion. It stores backup and primary-holder scores, effective expert count, risk score and level, and formula versions, as calculated then. That gives each plan an honest progress history, separate from administrator-captured Phase 4 snapshots.
+- `GET /transfers` (filter by status and knowledge area, paginated) and `GET /transfers/:id` are readable by every authenticated role. `GET /knowledge/:id/transfer-candidates`, `POST /transfers`, `PATCH /transfers/:id`, `POST /transfers/:id/activities`, and `PATCH /transfers/:id/activities/:activityId` require `MANAGER` or `KNOWLEDGE_ADMIN`. Plans are organizational work, so any manager or knowledge admin may update any plan; the creator is recorded.
+- Validation:
+  - The area must exist (404).
+  - Primary holder and backup must be distinct, active employees (404 when unknown, 400 when inactive or the same).
+  - The primary holder must hold meaningful expertise in the area.
+  - Target coverage is an integer from 1 to 100 and must exceed the backup's current score.
+  - The target date must be from today (UTC) to two years ahead.
+  - Only one open plan (not `COMPLETED`) may exist per area and backup (409).
+- Status changes:
+
+  | From          | Allowed to                |
+  | ------------- | ------------------------- |
+  | `PLANNED`     | `IN_PROGRESS`, `BLOCKED`  |
+  | `IN_PROGRESS` | `BLOCKED`, `COMPLETED`    |
+  | `BLOCKED`     | `IN_PROGRESS`             |
+  | `COMPLETED`   | none (409 for any change) |
+
+  The first completed activity moves a `PLANNED` plan to `IN_PROGRESS`. Activities cannot be added to or completed on a blocked or completed plan, and completing an activity twice returns 409.
+
+- Completing an activity happens in one transaction: create the evidence, mark the activity, and record a checkpoint. The response returns the plan with live coverage, risk, checkpoints, and recommendations.
+
+Web: `/transfers` lists plans with live coverage progress and risk. `/transfers/new` chooses an area (preselected from knowledge detail or a simulation result), the primary holder, a backup from candidates, the target, and the date. `/transfers/:id` shows baseline → current → target coverage, risk, checkpoint history, recommendations with one-click activity creation, activities with "Mark completed", and status actions. Writes use server actions with the server-held token; employees see read-only views. Language stays about knowledge coverage, never a person's performance.
+
+Seed calibration (probe at 2026-10-08, strength 1.0, following the recommendations in order): Line 4 starts at 56.9 CRITICAL, with Budi 93.2, Andri 18.3, and Joko 2.7.
+
+- Seven Andri activities lift Andri to about 76. The risk crosses into HIGH after the second activity and ends at about 33.1 HIGH.
+- A second plan with six Joko activities lifts Joko to about 44 and the risk to about 6.7 LOW, via MEDIUM.
+
+These are probes, not fixtures.
+
+**Reset command (pulled forward from Phase 7):** activity evidence is append-only, so a repeatable flagship demonstration needs a way back to the seed state. `pnpm db:reset` (also runnable in the Compose `seed` container) refuses to run without an explicit `--yes`. It then:
+
+1. deletes transfer checkpoints, activities, plans, simulation runs, risk snapshots, and every evidence row whose ID is not in the seed;
+2. reruns the idempotent seed.
+
+It never runs at startup. Integration and regular E2E tests avoid Line 4 and Budi's other areas, and assert relative improvement, so they survive repeated runs against an accumulating database. The core-data evidence ceiling becomes a floor (at least the 186 seeded records), because Phase 6 legitimately adds evidence. The CRITICAL → HIGH → LOW walkthrough resets the local database before and after it runs.
+
+Exclusions: the knowledge graph, AI or automatic candidate selection, notifications, calendar scheduling, editing or deleting completed activities or evidence, money estimates, background workers, and changes to Phase 3/4/5 formulas.
+
+Implementation sequence (TDD):
+
+1. Pure functions: activity mapping, recommendation bands, status transitions, progress percentage, and checkpoint calculation reusing the Phase 3/4 code; seed calibration test.
+2. Migration, transfer module (DTOs, service, controller), batched live coverage and risk, and the reset script.
+3. Web pages, server actions, and entry links from knowledge detail and simulation results.
+4. API integration tests (auth, validation, 404/409, permissions, transitions, evidence traceability, checkpoint history, no Line 4 side effects) and Playwright (create plan, complete activities, observe improvement, read-only employee), plus an opt-in flagship walkthrough with screenshots.
+5. Run format, lint, typecheck, unit tests, builds, migration drift check, upgrade and fresh migrations, seed and reset repeatability, integration, and E2E on a rebuilt stack. Record the results in `testing/PHASE_6_TEST_CASES.md` and get owner sign-off before marking **Complete**.
 
 ## Phase 7: Product Polish
 

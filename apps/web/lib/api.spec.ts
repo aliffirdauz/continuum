@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiRequestError, apiGet, apiPost, buildApiUrl } from "./api";
+import { ApiRequestError, apiGet, apiPatch, apiPost, buildApiUrl } from "./api";
 
 const { getToken, notFound, redirect } = vi.hoisted(() => ({
   getToken: vi.fn(),
@@ -131,6 +131,22 @@ describe("apiPost", () => {
       }),
     ).rejects.toThrow("NEXT_REDIRECT");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends PATCH with the same token handling and surfaces API errors", async () => {
+    fetchMock.mockResolvedValue(Response.json({ data: { id: "plan_1" } }));
+    await expect(
+      apiPatch("/transfers/plan_1", { status: "BLOCKED" }),
+    ).resolves.toEqual({ data: { id: "plan_1" } });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init).toMatchObject({
+      method: "PATCH",
+      headers: { Authorization: "Bearer private-api-token" },
+    });
+    fetchMock.mockResolvedValue(new Response("{}", { status: 409 }));
+    await expect(
+      apiPatch("/transfers/plan_1", { status: "BLOCKED" }),
+    ).rejects.toMatchObject({ status: 409 });
   });
 });
 

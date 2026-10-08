@@ -26,7 +26,8 @@
     "db:seed": "pnpm --filter @continuum/api prisma:seed",
     "compose:up": "docker compose up --build",
     "compose:down": "docker compose down",
-    "compose:reset": "docker compose down --volumes --remove-orphans"
+    "compose:reset": "docker compose down --volumes --remove-orphans",
+    "db:reset": "pnpm --filter @continuum/api db:reset"
   },
   "devDependencies": {
     "prettier": "3.9.9",

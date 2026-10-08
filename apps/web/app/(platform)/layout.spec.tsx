@@ -8,10 +8,12 @@ vi.mock("@/lib/session", () => ({
 vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
 import PlatformLayout from "./layout";
 
-it("links desktop and mobile navigation to the simulation flow", async () => {
+it("links desktop and mobile navigation to the simulation and transfer flows", async () => {
   const html = renderToStaticMarkup(
     await PlatformLayout({ children: <p>Content</p> }),
   );
   expect(html.match(/href="\/simulate"/g)).toHaveLength(2);
   expect(html).not.toContain("Simulation</span><span");
+  expect(html.match(/href="\/transfers"/g)).toHaveLength(2);
+  expect(html).not.toContain("Transfers</span><span");
 });

@@ -77,8 +77,8 @@ describe("seeded inventory", () => {
       knowledgeAreas: 25,
       businessObjects: 12,
     });
-    expect(summary.totals.evidence).toBeGreaterThanOrEqual(120);
-    expect(summary.totals.evidence).toBeLessThanOrEqual(200);
+    // Completed transfer activities append evidence, so only the seeded floor is stable.
+    expect(summary.totals.evidence).toBeGreaterThanOrEqual(186);
     expect(summary.highCriticalityKnowledgeAreas).toBeGreaterThan(0);
   });
 

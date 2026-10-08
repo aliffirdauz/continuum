@@ -26,9 +26,11 @@ Phase 2, core data, is complete. Its full acceptance passed on 2026-09-27. It ad
 
 Phase 3, the expertise engine, is complete. It adds evidence-weighted, recency-aware expertise scores, confidence labels, effective expert counts (inverse HHI), and an Expert Finder. Knowledge detail and people profiles show expertise in the context of individual knowledge areas, with traceable evidence. See [`docs/testing/PHASE_3_TEST_CASES.md`](docs/testing/PHASE_3_TEST_CASES.md) for its acceptance evidence.
 
-Phase 4, the risk engine, is complete. The API calculates knowledge-area exposure from business criticality, effective-expert concentration, evidence freshness, and documentation gaps. Protected dashboard and knowledge endpoints feed risk distribution, department summaries, ranked knowledge, server-calculated factor contributions, and a conditional snapshot history on the knowledge detail page. A knowledge administrator can explicitly capture a dated, versioned snapshot with `POST /api/v1/knowledge/:id/risk/snapshots`; ordinary GETs never create snapshots, and a captured date cannot be backdated. Existing snapshots are available through paginated GET at the same path. Automated regression, local visual/keyboard/outage walkthrough, and acceptance-owner screenshot review passed; see [`docs/DEVELOPMENT_PHASES.md`](docs/DEVELOPMENT_PHASES.md) and [`docs/testing/PHASE_4_TEST_CASES.md`](docs/testing/PHASE_4_TEST_CASES.md). Transfer planning remains future work.
+Phase 4, the risk engine, is complete. The API calculates knowledge-area exposure from business criticality, effective-expert concentration, evidence freshness, and documentation gaps. Protected dashboard and knowledge endpoints feed risk distribution, department summaries, ranked knowledge, server-calculated factor contributions, and a conditional snapshot history on the knowledge detail page. A knowledge administrator can explicitly capture a dated, versioned snapshot with `POST /api/v1/knowledge/:id/risk/snapshots`; ordinary GETs never create snapshots, and a captured date cannot be backdated. Existing snapshots are available through paginated GET at the same path. Automated regression, local visual/keyboard/outage walkthrough, and acceptance-owner screenshot review passed; see [`docs/DEVELOPMENT_PHASES.md`](docs/DEVELOPMENT_PHASES.md) and [`docs/testing/PHASE_4_TEST_CASES.md`](docs/testing/PHASE_4_TEST_CASES.md).
 
 Phase 5, unavailability simulation, is complete. A manager or knowledge admin can explicitly save a hypothetical run with `POST /api/v1/simulations/unavailability` and revisit their saved result with `GET /api/v1/simulations/:id` (admins can also read runs); ordinary employees cannot create runs. The `/simulate` page compares knowledge-area risk and coverage with and without one active employee at the same future horizon, with linked business objects. Existing evidence and documents are not deleted, and GET never recalculates or writes a run. Unit, migration, API integration, browser, and visual/outage acceptance passed on a rebuilt Compose stack, and the acceptance owner approved the screenshots. See [`docs/testing/PHASE_5_TEST_CASES.md`](docs/testing/PHASE_5_TEST_CASES.md).
+
+Phase 6, knowledge transfer, is implemented and awaiting acceptance-owner screenshot sign-off. Managers and knowledge admins plan backup coverage at `/transfers`: choose a knowledge area, its primary holder, a backup, a target coverage, and a date. They then add deterministic, recommended activities and complete them. Each completed activity records one traceable evidence row for the backup, so expertise, effective expert count, and risk change only through the existing Phase 3 and Phase 4 engines. Each plan keeps a dated progress history. With the seed data, a Budi → Andri plan takes Production Line 4 from CRITICAL to HIGH, and a second Budi → Joko plan takes it to LOW. Every role can read plans; only managers and knowledge admins change them. See [`docs/testing/PHASE_6_TEST_CASES.md`](docs/testing/PHASE_6_TEST_CASES.md).
 
 ## Architecture
 
@@ -172,7 +174,7 @@ pnpm test:e2e
 
 They default to `http://localhost:3001/api/v1` and `http://localhost:3000`; override them with `API_BASE_URL` and `E2E_BASE_URL`. Both sign in with `DEMO_USER_PASSWORD` or `E2E_PASSWORD`, which default to the development password.
 
-Phase-specific manual and automated acceptance cases are documented in [`docs/testing/PHASE_1_TEST_CASES.md`](docs/testing/PHASE_1_TEST_CASES.md), [`docs/testing/PHASE_2_TEST_CASES.md`](docs/testing/PHASE_2_TEST_CASES.md), [`docs/testing/PHASE_3_TEST_CASES.md`](docs/testing/PHASE_3_TEST_CASES.md), and [`docs/testing/PHASE_4_TEST_CASES.md`](docs/testing/PHASE_4_TEST_CASES.md).
+Phase-specific manual and automated acceptance cases are documented in [`docs/testing/PHASE_1_TEST_CASES.md`](docs/testing/PHASE_1_TEST_CASES.md), [`docs/testing/PHASE_2_TEST_CASES.md`](docs/testing/PHASE_2_TEST_CASES.md), [`docs/testing/PHASE_3_TEST_CASES.md`](docs/testing/PHASE_3_TEST_CASES.md), [`docs/testing/PHASE_4_TEST_CASES.md`](docs/testing/PHASE_4_TEST_CASES.md), [`docs/testing/PHASE_5_TEST_CASES.md`](docs/testing/PHASE_5_TEST_CASES.md), and [`docs/testing/PHASE_6_TEST_CASES.md`](docs/testing/PHASE_6_TEST_CASES.md).
 
 ## Database Workflows
 
@@ -196,7 +198,15 @@ pnpm db:seed
 
 The seed upserts records by stable IDs such as `ka_line4_troubleshooting` and never deletes data. Evidence dates are fixed offsets from `2026-09-01`, so repeated runs write identical rows. The dataset lives in `apps/api/prisma/seed-data/northstar.ts`.
 
-Reset all local Compose data only when a destructive reset is intended:
+Completed transfer activities append evidence. To return the demo database to the seed state, deleting transfer plans, simulation runs, risk snapshots, and every non-seed evidence record, run the explicit reset. It refuses to run without `--yes` and never runs at startup:
+
+```bash
+pnpm db:reset --yes
+# or, against the Compose database:
+docker compose run --rm --no-deps seed pnpm --filter @continuum/api db:reset --yes
+```
+
+Reset all local Compose data, including volumes, only when a destructive reset is intended:
 
 ```bash
 pnpm compose:reset
@@ -217,7 +227,9 @@ continuum/
 |       |-- PHASE_1_TEST_CASES.md
 |       |-- PHASE_2_TEST_CASES.md
 |       |-- PHASE_3_TEST_CASES.md
-|       `-- PHASE_4_TEST_CASES.md
+|       |-- PHASE_4_TEST_CASES.md
+|       |-- PHASE_5_TEST_CASES.md
+|       `-- PHASE_6_TEST_CASES.md
 |-- AGENTS.md                 Contributor and coding-agent guardrails
 |-- docker-compose.yml
 |-- pnpm-workspace.yaml

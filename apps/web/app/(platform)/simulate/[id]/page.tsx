@@ -257,7 +257,13 @@ export default async function SimulationResultPage({
                   </Link>
                 </h3>
                 <p className="text-sm text-slate-600">
-                  {area.knowledgeArea.department.name}
+                  {area.knowledgeArea.department.name} ·{" "}
+                  <Link
+                    href={`/transfers/new?knowledgeArea=${encodeURIComponent(area.knowledgeArea.id)}&primary=${encodeURIComponent(run.employee.id)}`}
+                    className="rounded font-medium text-emerald-800 underline focus-visible:ring-2 focus-visible:ring-emerald-700"
+                  >
+                    Plan a transfer
+                  </Link>
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">

@@ -82,8 +82,16 @@ async function read(id: string, token = manager, query = "") {
 async function sourceState() {
   const json = async (target: string) =>
     (await (await send(target, employee)).json()) as Record<string, unknown>;
+  // Transfer tests may add evidence elsewhere concurrently, so compare the
+  // records a simulation could touch rather than the global evidence total.
+  const { evidence: _evidence, ...totals } = (await json("/dashboard/summary"))
+    .totals as Record<string, number>;
+  void _evidence;
+  const line4 = (await json("/knowledge/ka_line4_troubleshooting/evidence"))
+    .meta;
   return {
-    totals: (await json("/dashboard/summary")).totals,
+    totals,
+    line4,
     budiStatus: (await json("/employees/emp_budi")).status,
     budiEvidence: (await json("/employees/emp_budi/evidence")).meta,
     snapshots: (

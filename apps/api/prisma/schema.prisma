@@ -30,6 +30,7 @@ model User {
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   simulationRuns SimulationRun[]
+  transferPlans  KnowledgeTransferPlan[]
 
   @@map("users")
 }
@@ -119,6 +120,9 @@ model Employee {
   department Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   evidence   Evidence[]
 
+  primaryTransferPlans KnowledgeTransferPlan[] @relation("TransferPrimaryHolder")
+  backupTransferPlans  KnowledgeTransferPlan[] @relation("TransferBackup")
+
   @@index([departmentId])
   @@index([status])
   @@index([name(ops: raw("gin_trgm_ops"))], map: "employees_name_trgm_idx", type: Gin)
@@ -142,6 +146,7 @@ model KnowledgeArea {
   businessObjects KnowledgeBusinessObject[]
   evidence        Evidence[]
   riskSnapshots   KnowledgeRiskSnapshot[]
+  transferPlans   KnowledgeTransferPlan[]
 
   @@index([departmentId])
   @@index([category])
@@ -201,6 +206,8 @@ model Evidence {
   employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   knowledgeArea KnowledgeArea @relation(fields: [knowledgeAreaId], references: [id], onDelete: Restrict)
 
+  transferActivity TransferActivity?
+
   @@index([knowledgeAreaId, occurredAt(sort: Desc)])
   @@index([employeeId, occurredAt(sort: Desc)])
   @@index([type])
@@ -228,4 +235,97 @@ model KnowledgeRiskSnapshot {
   @@unique([knowledgeAreaId, snapshotDate, formulaVersion])
   @@index([knowledgeAreaId, snapshotDate(sort: Desc)])
   @@map("knowledge_risk_snapshots")
+}
+
+enum TransferPlanStatus {
+  PLANNED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+}
+
+enum TransferActivityType {
+  SHADOW_SESSION
+  DOCUMENTATION
+  PAIR_WORK
+  INCIDENT_OBSERVATION
+  TRAINING
+  REVIEW
+  INDEPENDENT_VALIDATION
+  KNOWLEDGE_INTERVIEW
+}
+
+enum TransferActivityStatus {
+  PLANNED
+  COMPLETED
+}
+
+model KnowledgeTransferPlan {
+  id               String             @id @default(cuid())
+  knowledgeAreaId  String             @map("knowledge_area_id")
+  primaryHolderId  String             @map("primary_holder_id")
+  backupEmployeeId String             @map("backup_employee_id")
+  status           TransferPlanStatus @default(PLANNED)
+  targetCoverage   Float              @map("target_coverage")
+  baselineCoverage Float              @map("baseline_coverage")
+  targetDate       DateTime           @map("target_date") @db.Date
+  startedAt        DateTime?          @map("started_at") @db.Timestamptz(3)
+  completedAt      DateTime?          @map("completed_at") @db.Timestamptz(3)
+  createdById      String             @map("created_by_id")
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  knowledgeArea  KnowledgeArea        @relation(fields: [knowledgeAreaId], references: [id], onDelete: Restrict)
+  primaryHolder  Employee             @relation("TransferPrimaryHolder", fields: [primaryHolderId], references: [id], onDelete: Restrict)
+  backupEmployee Employee             @relation("TransferBackup", fields: [backupEmployeeId], references: [id], onDelete: Restrict)
+  createdBy      User                 @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  activities     TransferActivity[]
+  checkpoints    TransferCheckpoint[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([knowledgeAreaId, backupEmployeeId])
+  @@index([backupEmployeeId])
+  @@index([primaryHolderId])
+  @@map("knowledge_transfer_plans")
+}
+
+model TransferActivity {
+  id             String                 @id @default(cuid())
+  transferPlanId String                 @map("transfer_plan_id")
+  type           TransferActivityType
+  title          String
+  description    String?
+  status         TransferActivityStatus @default(PLANNED)
+  weight         Float
+  completedAt    DateTime?              @map("completed_at") @db.Timestamptz(3)
+  evidenceId     String?                @unique @map("evidence_id")
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  transferPlan KnowledgeTransferPlan @relation(fields: [transferPlanId], references: [id], onDelete: Restrict)
+  evidence     Evidence?             @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+  checkpoint   TransferCheckpoint?
+
+  @@index([transferPlanId, createdAt])
+  @@map("transfer_activities")
+}
+
+model TransferCheckpoint {
+  id                   String   @id @default(cuid())
+  transferPlanId       String   @map("transfer_plan_id")
+  activityId           String?  @unique @map("activity_id")
+  capturedAt           DateTime @map("captured_at") @db.Timestamptz(3)
+  backupScore          Float    @map("backup_score")
+  primaryHolderScore   Float    @map("primary_holder_score")
+  effectiveExpertCount Float    @map("effective_expert_count")
+  riskScore            Float    @map("risk_score")
+  riskLevel            String   @map("risk_level")
+  formulaVersion       String   @map("formula_version")
+  mappingVersion       String   @map("mapping_version")
+
+  transferPlan KnowledgeTransferPlan @relation(fields: [transferPlanId], references: [id], onDelete: Restrict)
+  activity     TransferActivity?     @relation(fields: [activityId], references: [id], onDelete: Restrict)
+
+  @@index([transferPlanId, capturedAt])
+  @@map("transfer_checkpoints")
 }

@@ -25,7 +25,7 @@ const navigation = [
   { label: "Experts", icon: Search, href: "/experts" },
   { label: "People", icon: UsersRound, href: "/people" },
   { label: "Simulation", icon: Activity, href: "/simulate" },
-  { label: "Transfers", icon: ArrowRightLeft },
+  { label: "Transfers", icon: ArrowRightLeft, href: "/transfers" },
   { label: "Knowledge graph", icon: Network },
 ];
 

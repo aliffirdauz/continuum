@@ -25,9 +25,11 @@ Phase 4, knowledge-area risk, is complete. Protected risk reads, knowledge-admin
 
 Phase 5, unavailability simulation, is complete. The protected API, saved-run migration, and server-mediated `/simulate` flow passed unit, migration, integration, browser, and visual/outage acceptance, and the owner approved the screenshots; see `docs/testing/PHASE_5_TEST_CASES.md`. Do not confuse saved what-if runs with observed Phase 4 risk snapshots.
 
+Phase 6, knowledge transfer, is implemented and awaiting acceptance-owner screenshot sign-off; see `docs/testing/PHASE_6_TEST_CASES.md`. Completed transfer activities append traceable evidence, never a separate score. Integration and E2E tests must avoid Line 4, Budi's areas, and `emp_ayu`, whose seeded state other suites assert. Use `pnpm db:reset --yes` only deliberately: it deletes user-created records.
+
 Do not mistake an authentication `User` for the domain `Employee`. They have different responsibilities and are deliberately unlinked.
 
-Do not add simulation, transfer planning, real connectors, AI, Neo4j, or microservices before their scheduled phase.
+Do not add the knowledge graph, real connectors, AI, Neo4j, or microservices before their scheduled phase.
 
 ## Architecture Rules
 

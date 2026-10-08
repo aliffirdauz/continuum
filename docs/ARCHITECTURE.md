@@ -145,3 +145,30 @@ The pure, versioned risk formula under `apps/api/src/risk/` combines area critic
 The API's `apps/api/src/simulations/` compares both branches at the same `startedAt + durationDays` horizon. Only evidence present at capture is eligible; the selected employee's expertise score is omitted in the unavailable branch, while previously authored evidence remains usable for freshness/documentation. Relative inverse-HHI concentration and a separately versioned absolute coverage proxy can legitimately move in different directions. The API batches affected areas, their evidence, and linked objects and keeps the Phase 4 risk formula unchanged.
 
 `POST /api/v1/simulations/unavailability` is an explicit manager/knowledge-admin write to `simulation_runs`, storing creator, inputs, formula versions, and immutable JSON results under an opaque ID. `GET /api/v1/simulations/:id` serves the saved result to its creator or a knowledge admin without recomputation or writes; an inaccessible ID is treated as not found. The web `/simulate` server action forwards authenticated POST requests using a server-held token and links to `/simulate/:id`; the browser does not call the API directly. The POST responds from the persisted row, so a later GET returns exactly the same JSON; JSONB may normalize the last digits of unrounded floats. Results are hypothetical, not employee ratings or observed outages. Acceptance evidence is in [`testing/PHASE_5_TEST_CASES.md`](testing/PHASE_5_TEST_CASES.md).
+
+## Phase 6 Knowledge Transfer Boundary (Awaiting Sign-off)
+
+The framework-independent rules under `apps/api/src/transfers/transfer.ts` cover:
+
+- the versioned activity-to-evidence mapping (`transfer-v1`);
+- the spec section 24 recommendation bands;
+- plan status transitions;
+- coverage progress;
+- an area assessment that reuses the Phase 3 scoring and the unchanged Phase 4 `risk-v1` formula.
+
+Plans, activities, and checkpoints live in `knowledge_transfer_plans`, `transfer_activities`, and `transfer_checkpoints`, created by a forward migration with check constraints for distinct people, coverage and weight ranges, and complete activity records.
+
+`GET /api/v1/transfers` and `GET /api/v1/transfers/:id` are readable by every authenticated role. Candidates, creation, status changes, and activity writes require `MANAGER` or `KNOWLEDGE_ADMIN`.
+
+Completing an activity is one transaction:
+
+1. insert an `Evidence` row for the backup (`source = "Transfer plan"`, `sourceReference` = activity ID);
+2. mark the activity with a status-guarded update, so a concurrent second completion rolls back;
+3. move the plan into progress;
+4. store a checkpoint calculated at that moment.
+
+A PostgreSQL advisory lock keeps one open plan per area and backup. Current coverage and risk are computed live from batched evidence reads; only the baseline and checkpoints are stored.
+
+Inverse HHI is relative. Training a backup until they dominate the primary holder concentrates knowledge again, and risk can then rise; the interface shows both coverage and risk rather than implying one always follows the other.
+
+Writes from the web are server actions with the server-held token. They refresh the plan with `revalidatePath`, because a same-page redirect would not refetch it. Evidence is append-only, so `pnpm db:reset --yes` (`apps/api/prisma/reset.ts`) is the explicit way back to the seed state; it deletes only user-created records and reruns the idempotent seed. See [`testing/PHASE_6_TEST_CASES.md`](testing/PHASE_6_TEST_CASES.md).
