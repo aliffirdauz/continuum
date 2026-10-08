@@ -170,7 +170,7 @@ flowchart LR
 
 Arrows inside the API show data dependencies between modules. Each formula module is a pure, versioned function that the NestJS services feed with batched PostgreSQL reads.
 
-## Phase 6 Knowledge Transfer Boundary (Awaiting Sign-off)
+## Phase 6 Knowledge Transfer Boundary
 
 The framework-independent rules under `apps/api/src/transfers/transfer.ts` cover:
 
