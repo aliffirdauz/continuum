@@ -11,7 +11,10 @@ import { ExpertiseCoverage } from "@/components/expertise-coverage";
 import { PageHeader } from "@/components/page-header";
 import { PaginationNav } from "@/components/pagination-nav";
 import { PersonAvatar } from "@/components/person-avatar";
+import { ExplainDrawer } from "@/components/explain-drawer";
+import { ExpertiseMethod, RiskMethod } from "@/components/methodology";
 import { RiskExplanation } from "@/components/risk-summary";
+import { RISK_COLOR, TrendChart, riskBands } from "@/components/trend-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -143,6 +146,13 @@ export default async function KnowledgeDetailPage({
           </>
         }
       >
+        <ExplainDrawer
+          triggerLabel="How these figures work"
+          title="How risk and expertise are calculated"
+        >
+          <RiskMethod />
+          <ExpertiseMethod />
+        </ExplainDrawer>
         {canPlanTransfer ? (
           <Button asChild variant="outline">
             <Link
@@ -210,7 +220,20 @@ export default async function KnowledgeDetailPage({
                 : null}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {snapshots.data.length > 1 ? (
+              <TrendChart
+                title="Captured risk score"
+                summary={`${snapshots.data.length} captures from ${formatDate(snapshots.data.at(-1)!.snapshotDate)} to ${formatDate(snapshots.data[0]!.snapshotDate)}, in capture order. Lower is better.`}
+                color={RISK_COLOR}
+                bands={riskBands}
+                points={[...snapshots.data].reverse().map((snapshot) => ({
+                  label: formatDate(snapshot.snapshotDate),
+                  value: snapshot.riskScore,
+                  detail: `${formatDate(snapshot.snapshotDate)}: ${snapshot.riskLevel} ${snapshot.riskScore.toFixed(1)}/100 (${snapshot.formulaVersion})`,
+                }))}
+              />
+            ) : null}
             <ul className="divide-y divide-slate-100">
               {snapshots.data.map((snapshot) => (
                 <li

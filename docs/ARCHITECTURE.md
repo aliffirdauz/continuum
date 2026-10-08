@@ -146,6 +146,30 @@ The API's `apps/api/src/simulations/` compares both branches at the same `starte
 
 `POST /api/v1/simulations/unavailability` is an explicit manager/knowledge-admin write to `simulation_runs`, storing creator, inputs, formula versions, and immutable JSON results under an opaque ID. `GET /api/v1/simulations/:id` serves the saved result to its creator or a knowledge admin without recomputation or writes; an inaccessible ID is treated as not found. The web `/simulate` server action forwards authenticated POST requests using a server-held token and links to `/simulate/:id`; the browser does not call the API directly. The POST responds from the persisted row, so a later GET returns exactly the same JSON; JSONB may normalize the last digits of unrounded floats. Results are hypothetical, not employee ratings or observed outages. Acceptance evidence is in [`testing/PHASE_5_TEST_CASES.md`](testing/PHASE_5_TEST_CASES.md).
 
+## System Diagram
+
+```mermaid
+flowchart LR
+  browser["Browser"] -->|"pages and server actions<br/>never holds the API token"| web["Next.js web :3000<br/>server components · Auth.js"]
+  web -->|"Bearer token, server-side only"| api
+  subgraph api["NestJS API :3001 · modular monolith"]
+    direction TB
+    core["Core data<br/>departments · people · knowledge · evidence"]
+    expertise["Expertise engine<br/>scoring · decay · inverse HHI"]
+    risk["Risk engine · risk-v1<br/>explanations · snapshots"]
+    sim["Simulations · coverage-v1<br/>saved what-if runs"]
+    transfer["Knowledge transfer · transfer-v1<br/>plans · activities · checkpoints"]
+    core --> expertise --> risk
+    risk --> sim
+    risk --> transfer
+    transfer -->|"completed activity = new evidence"| core
+  end
+  api --> pg[("PostgreSQL 17<br/>source of truth")]
+  api -.->|"readiness check only"| redis[("Redis 7")]
+```
+
+Arrows inside the API show data dependencies between modules. Each formula module is a pure, versioned function that the NestJS services feed with batched PostgreSQL reads.
+
 ## Phase 6 Knowledge Transfer Boundary (Awaiting Sign-off)
 
 The framework-independent rules under `apps/api/src/transfers/transfer.ts` cover:
@@ -172,3 +196,16 @@ A PostgreSQL advisory lock keeps one open plan per area and backup. Current cove
 Inverse HHI is relative. Training a backup until they dominate the primary holder concentrates knowledge again, and risk can then rise; the interface shows both coverage and risk rather than implying one always follows the other.
 
 Writes from the web are server actions with the server-held token. They refresh the plan with `revalidatePath`, because a same-page redirect would not refetch it. Evidence is append-only, so `pnpm db:reset --yes` (`apps/api/prisma/reset.ts`) is the explicit way back to the seed state; it deletes only user-created records and reruns the idempotent seed. See [`testing/PHASE_6_TEST_CASES.md`](testing/PHASE_6_TEST_CASES.md).
+
+## Phase 7 Product Polish Boundary (Awaiting Sign-off)
+
+Phase 7 adds no formula or write endpoint. Its two read-only additions are:
+
+- `GET /api/v1/dashboard/transfer-summary`, which counts plans by status;
+- an additive `primaryHolder` field on `GET /api/v1/dashboard/high-risk-knowledge`. It names the person with the largest unrounded contribution in each area, with ID tie-breaks, as context rather than a ranking. The per-area risk response is unchanged.
+
+Charts (`components/trend-chart.tsx`) are server-rendered SVG with no dependency. Each chart plots one measure on one 0–100 axis, gives every point a native tooltip, and names risk levels with text labels. The tables or lists beside a chart carry the same values.
+
+Explanation drawers use the native modal `<dialog>` for focus handling and Escape. Tooltips open on hover or focus, close with Escape, and dock to the bottom of narrow screens so they never widen the page. Route-level skeletons mirror the dashboard, knowledge detail, simulation, and transfer pages.
+
+The opt-in `portfolio-demo.manual.spec.ts` runs the spec section 49 path end to end. It resets the local database before and after the run and regenerates the README screenshots. See [`testing/PHASE_7_TEST_CASES.md`](testing/PHASE_7_TEST_CASES.md).

@@ -107,3 +107,16 @@ export class TransferCandidatesController {
     return this.transfers.candidates(id);
   }
 }
+
+@ApiTags("transfers")
+@ApiBearerAuth()
+@Controller("dashboard")
+export class TransferDashboardController {
+  constructor(private readonly transfers: TransfersService) {}
+
+  @Get("transfer-summary")
+  @ApiOperation({ summary: "Count transfer plans by status" })
+  summary() {
+    return this.transfers.statusSummary();
+  }
+}

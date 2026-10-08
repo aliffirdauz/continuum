@@ -444,3 +444,20 @@ describe("transfer candidates", () => {
     );
   });
 });
+
+describe("transfer status summary", () => {
+  it("counts every status, including zeros, and treats unfinished plans as active", async () => {
+    const { prisma, service } = fixture();
+    Object.assign(prisma.knowledgeTransferPlan, {
+      groupBy: vi.fn().mockResolvedValue([
+        { status: "IN_PROGRESS", _count: { _all: 2 } },
+        { status: "BLOCKED", _count: { _all: 1 } },
+        { status: "COMPLETED", _count: { _all: 4 } },
+      ]),
+    });
+    expect(await service.statusSummary()).toEqual({
+      totals: { PLANNED: 0, IN_PROGRESS: 2, BLOCKED: 1, COMPLETED: 4 },
+      active: 3,
+    });
+  });
+});

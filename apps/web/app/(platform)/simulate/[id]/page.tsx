@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ExplainDrawer } from "@/components/explain-drawer";
+import { InfoTip } from "@/components/info-tip";
+import { SimulationMethod } from "@/components/methodology";
 import { PageHeader } from "@/components/page-header";
 import { RiskBadge } from "@/components/risk-summary";
 import { Card } from "@/components/ui/card";
@@ -10,6 +13,7 @@ import type {
   RiskLevel,
 } from "@/lib/api-types";
 import { formatDate } from "@/lib/format";
+import { glossary } from "@/lib/glossary";
 import {
   buildHref,
   parseId,
@@ -91,7 +95,10 @@ function ComparisonCard({
       <h4 className="text-sm font-semibold text-slate-700">{label}</h4>
       <dl className="mt-3 grid gap-2 text-sm">
         <div className="flex justify-between gap-2">
-          <dt>Coverage proxy</dt>
+          <dt className="flex items-center gap-1">
+            Coverage proxy
+            <InfoTip term="coverage proxy">{glossary.coverageProxy}</InfoTip>
+          </dt>
           <dd className="font-semibold tabular-nums">
             {value.coverage.toFixed(1)}%
           </dd>
@@ -103,7 +110,12 @@ function ComparisonCard({
           </dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt>Effective experts</dt>
+          <dt className="flex items-center gap-1">
+            Effective experts
+            <InfoTip term="effective experts">
+              {glossary.effectiveExperts}
+            </InfoTip>
+          </dt>
           <dd className="tabular-nums">
             {value.effectiveExpertCount.toFixed(2)}
           </dd>
@@ -185,12 +197,20 @@ export default async function SimulationResultPage({
           Risk formula {run.formulaVersion} · Coverage formula{" "}
           {run.coverageFormulaVersion}
         </p>
-        <Link
-          href="/simulate"
-          className="inline-block rounded text-sm font-medium text-emerald-800 underline focus-visible:ring-2 focus-visible:ring-emerald-700"
-        >
-          Start another simulation
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <ExplainDrawer
+            triggerLabel="How simulations compare"
+            title="How an unavailability simulation compares"
+          >
+            <SimulationMethod />
+          </ExplainDrawer>
+          <Link
+            href="/simulate"
+            className="inline-block rounded text-sm font-medium text-emerald-800 underline focus-visible:ring-2 focus-visible:ring-emerald-700"
+          >
+            Start another simulation
+          </Link>
+        </div>
       </Card>
       <section
         aria-label="Simulation summary"

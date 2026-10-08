@@ -3,9 +3,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActionForm } from "@/components/action-form";
+import { ExplainDrawer } from "@/components/explain-drawer";
+import { InfoTip } from "@/components/info-tip";
+import { TransferMethod } from "@/components/methodology";
 import { PageHeader } from "@/components/page-header";
 import { RiskBadge } from "@/components/risk-summary";
 import { CoverageBar, TransferStatusBadge } from "@/components/transfer-plan";
+import {
+  COVERAGE_COLOR,
+  RISK_COLOR,
+  TrendChart,
+  riskBands,
+} from "@/components/trend-chart";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +26,7 @@ import {
   type TransferStatus,
 } from "@/lib/api-types";
 import { formatDate } from "@/lib/format";
+import { glossary } from "@/lib/glossary";
 import { isResourceId } from "@/lib/search-params";
 import { requireSession } from "@/lib/session";
 import {
@@ -79,7 +89,14 @@ export default async function TransferPlanPage({
         eyebrow="Knowledge transfer plan"
         title={plan.knowledgeArea.name}
         description={`${plan.primaryHolder.name} (primary holder) → ${plan.backupEmployee.name} (backup) · ${plan.knowledgeArea.department.name}`}
-      />
+      >
+        <ExplainDrawer
+          triggerLabel="How progress is measured"
+          title="How transfer progress is measured"
+        >
+          <TransferMethod />
+        </ExplainDrawer>
+      </PageHeader>
 
       <section
         aria-labelledby="plan-status"
@@ -87,8 +104,14 @@ export default async function TransferPlanPage({
       >
         <Card className="space-y-4 p-4 sm:p-6 lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="plan-status" className="font-semibold">
+            <h2
+              id="plan-status"
+              className="flex items-center gap-1 font-semibold"
+            >
               Backup coverage
+              <InfoTip term="backup coverage">
+                {glossary.backupCoverage}
+              </InfoTip>
             </h2>
             <TransferStatusBadge status={plan.status} />
           </div>
@@ -173,6 +196,32 @@ export default async function TransferPlanPage({
           completed, as calculated at that moment (risk formula{" "}
           {plan.risk.formulaVersion}, activity mapping {plan.mappingVersion}).
         </p>
+        {plan.checkpoints.length > 1 ? (
+          <div className="grid gap-6 border-b border-slate-100 pb-5 md:grid-cols-2">
+            <TrendChart
+              title="Backup coverage"
+              summary={`Rose from ${plan.checkpoints[0]!.backupScore.toFixed(1)} at creation to ${plan.checkpoints.at(-1)!.backupScore.toFixed(1)} after ${plan.checkpoints.length - 1} completed activities; target ${plan.coverage.target}.`}
+              color={COVERAGE_COLOR}
+              reference={{ value: plan.coverage.target, label: "Target" }}
+              points={plan.checkpoints.map((checkpoint, index) => ({
+                label: index === 0 ? "Start" : `Activity ${index}`,
+                value: checkpoint.backupScore,
+                detail: `${checkpointEvent(checkpoint.activityId)}: coverage ${checkpoint.backupScore.toFixed(1)}`,
+              }))}
+            />
+            <TrendChart
+              title="Area risk score"
+              summary={`Moved from ${plan.checkpoints[0]!.riskLevel} ${plan.checkpoints[0]!.riskScore.toFixed(1)} to ${plan.checkpoints.at(-1)!.riskLevel} ${plan.checkpoints.at(-1)!.riskScore.toFixed(1)}. Lower is better.`}
+              color={RISK_COLOR}
+              bands={riskBands}
+              points={plan.checkpoints.map((checkpoint, index) => ({
+                label: index === 0 ? "Start" : `Activity ${index}`,
+                value: checkpoint.riskScore,
+                detail: `${checkpointEvent(checkpoint.activityId)}: ${checkpoint.riskLevel} ${checkpoint.riskScore.toFixed(1)}/100`,
+              }))}
+            />
+          </div>
+        ) : null}
         <ol className="divide-y divide-slate-100 sm:hidden">
           {plan.checkpoints.map((checkpoint) => (
             <li key={checkpoint.id} className="space-y-1.5 py-3 text-sm">

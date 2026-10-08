@@ -16,6 +16,7 @@ import {
   ACTIVITY_EVIDENCE_TYPE,
   TRANSFER_EVIDENCE_SOURCE,
   TRANSFER_MAPPING_VERSION,
+  TRANSFER_STATUSES,
   assessArea,
   canTransition,
   coverageProgress,
@@ -520,6 +521,23 @@ export class TransfersService {
       });
     });
     return this.get(id);
+  }
+
+  async statusSummary() {
+    const groups = await this.prisma.knowledgeTransferPlan.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    });
+    const totals = Object.fromEntries(
+      TRANSFER_STATUSES.map((status) => [
+        status,
+        groups.find((group) => group.status === status)?._count._all ?? 0,
+      ]),
+    ) as Record<TransferPlanStatus, number>;
+    return {
+      totals,
+      active: totals.PLANNED + totals.IN_PROGRESS + totals.BLOCKED,
+    };
   }
 
   async candidates(knowledgeAreaId: string) {

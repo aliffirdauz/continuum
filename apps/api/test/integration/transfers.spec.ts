@@ -445,3 +445,27 @@ describe("knowledge transfer API", () => {
     expect(line4After.evidenceCount).toBe(line4Before.evidenceCount);
   });
 });
+
+describe("transfer dashboard summary", () => {
+  it("counts plans by status for every authenticated role", async () => {
+    expect((await call("GET", "/dashboard/transfer-summary", "")).status).toBe(
+      401,
+    );
+    const response = await call("GET", "/dashboard/transfer-summary", employee);
+    expect(response.status).toBe(200);
+    const summary = (await response.json()) as {
+      totals: Record<string, number>;
+      active: number;
+    };
+    const list = await call("GET", "/transfers?pageSize=1", employee);
+    const total = ((await list.json()) as { meta: { total: number } }).meta
+      .total;
+    const sum = Object.values(summary.totals).reduce((a, b) => a + b, 0);
+    expect(sum).toBe(total);
+    expect(summary.active).toBe(
+      summary.totals.PLANNED! +
+        summary.totals.IN_PROGRESS! +
+        summary.totals.BLOCKED!,
+    );
+  });
+});

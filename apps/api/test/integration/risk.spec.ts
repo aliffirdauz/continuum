@@ -183,3 +183,26 @@ describe("risk API", () => {
     expect((await request(`${path}?pageSize=101`)).status).toBe(400);
   });
 });
+
+describe("highest-risk primary holders", () => {
+  it("names the person holding most of each area's expertise", async () => {
+    const response = await request(
+      `/dashboard/high-risk-knowledge?asOf=${asOf}&pageSize=25`,
+    );
+    expect(response.status).toBe(200);
+    const { data } = (await response.json()) as {
+      data: Array<{
+        knowledgeArea: { id: string };
+        primaryHolder: { id: string; name: string } | null;
+      }>;
+    };
+    const line4 = data.find(
+      ({ knowledgeArea }) => knowledgeArea.id === "ka_line4_troubleshooting",
+    );
+    expect(line4?.primaryHolder).toEqual({
+      id: "emp_budi",
+      name: "Budi Santoso",
+    });
+    expect(JSON.stringify(data)).not.toMatch(/rank|score":\s*\{/i);
+  });
+});

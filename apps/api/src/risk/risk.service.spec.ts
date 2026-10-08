@@ -27,6 +27,7 @@ function fixture() {
       findUnique: vi.fn().mockResolvedValue(areas[0]),
     },
     evidence: { findMany: vi.fn().mockResolvedValue([]) },
+    employee: { findMany: vi.fn().mockResolvedValue([]) },
     knowledgeRiskSnapshot: {
       upsert: vi
         .fn()
@@ -123,6 +124,35 @@ describe("risk service", () => {
     expect(result.data.evidenceCount).toBe(2);
     expect(result.data.factors.documentationGap).toBe(0);
     expect(result.data.riskScore).toBeLessThan(75);
+  });
+  it("names each high-risk area's primary holder without changing the area risk response", async () => {
+    const { service, prisma } = fixture();
+    const row = (employeeId: string, strength: number) => ({
+      knowledgeAreaId: "ka_a",
+      employeeId,
+      type: "INCIDENT_RESOLVED",
+      strength,
+      occurredAt: new Date("2026-08-15T00:00:00Z"),
+    });
+    // emp_b and emp_c tie at the top; the lower ID wins deterministically.
+    prisma.evidence.findMany.mockResolvedValue([
+      row("emp_a", 0.4),
+      row("emp_c", 0.9),
+      row("emp_b", 0.9),
+    ]);
+    prisma.employee.findMany.mockResolvedValue([{ id: "emp_b", name: "Bea" }]);
+    const result = await service.highRisk({ asOf, page: 1, pageSize: 10 });
+    expect(prisma.employee.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ["emp_b"] } },
+      select: { id: true, name: true },
+    });
+    const byArea = Object.fromEntries(
+      result.data.map((entry) => [entry.knowledgeArea.id, entry.primaryHolder]),
+    );
+    expect(byArea).toEqual({ ka_a: { id: "emp_b", name: "Bea" }, ka_b: null });
+    const area = await service.forKnowledge("ka_a", { asOf });
+    expect(area.data).not.toHaveProperty("primaryHolderId");
+    expect(area.data).not.toHaveProperty("primaryHolder");
   });
   it("returns not found for unknown areas", async () => {
     const { service, prisma } = fixture();

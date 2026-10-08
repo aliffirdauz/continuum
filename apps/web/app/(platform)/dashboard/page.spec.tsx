@@ -64,6 +64,19 @@ describe("dashboard risk overview", () => {
               },
             ],
           };
+        case "/dashboard/risk-overview":
+          return {
+            asOf,
+            totalKnowledgeAreas: 1,
+            criticalKnowledgeAreas: 1,
+            atRiskKnowledgeAreas: 1,
+            averageEffectiveExpertCount: 1,
+          };
+        case "/dashboard/transfer-summary":
+          return {
+            totals: { PLANNED: 1, IN_PROGRESS: 2, BLOCKED: 0, COMPLETED: 3 },
+            active: 3,
+          };
         case "/dashboard/high-risk-knowledge":
           return {
             asOf,
@@ -73,6 +86,7 @@ describe("dashboard risk overview", () => {
                 effectiveExpertCount: 1,
                 riskScore: 85,
                 riskLevel: "CRITICAL",
+                primaryHolder: { id: "emp_budi", name: "Budi Santoso" },
               },
             ],
             meta: { page: 1, pageSize: 6, total: 1, totalPages: 1 },
@@ -88,5 +102,10 @@ describe("dashboard risk overview", () => {
     expect(html).toContain("85.0/100");
     expect(html).toContain("/knowledge/ka_line");
     expect(html).toContain("/knowledge?risk=CRITICAL");
+    expect(html).toContain("Active transfer plans");
+    expect(html).toContain("3 completed · view plans");
+    expect(html).toContain("primary holder");
+    expect(html).toContain('href="/people/emp_budi"');
+    expect(html).toContain("How risk is calculated");
   });
 });

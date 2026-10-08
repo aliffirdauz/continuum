@@ -237,6 +237,21 @@ export interface HighRiskKnowledge {
   effectiveExpertCount: number;
   riskScore: number;
   riskLevel: RiskLevel;
+  /** The person holding the largest share of this area's expertise. */
+  primaryHolder: Reference | null;
+}
+
+export interface RiskOverviewSummary {
+  asOf: string;
+  totalKnowledgeAreas: number;
+  criticalKnowledgeAreas: number;
+  atRiskKnowledgeAreas: number;
+  averageEffectiveExpertCount: number;
+}
+
+export interface TransferSummary {
+  totals: Record<"PLANNED" | "IN_PROGRESS" | "BLOCKED" | "COMPLETED", number>;
+  active: number;
 }
 
 export interface EvidenceItem {

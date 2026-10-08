@@ -55,16 +55,22 @@ export class RiskService {
         group.push(row);
         byPerson.set(row.employeeId, group);
       }
-      const scores = [...byPerson.values()]
-        .map(
-          (group) =>
-            scoreExpertise(group, {
-              asOf,
-              knowledgeDecayRate: area.knowledgeDecayRate,
-            }).rawScore,
-        )
-        .filter(isMeaningfulExpertise);
-      const expertCount = effectiveExpertCount(scores);
+      const holders = [...byPerson]
+        .map(([employeeId, group]) => ({
+          employeeId,
+          rawScore: scoreExpertise(group, {
+            asOf,
+            knowledgeDecayRate: area.knowledgeDecayRate,
+          }).rawScore,
+        }))
+        .filter(({ rawScore }) => isMeaningfulExpertise(rawScore))
+        .sort(
+          (a, b) =>
+            b.rawScore - a.rawScore || a.employeeId.localeCompare(b.employeeId),
+        );
+      const expertCount = effectiveExpertCount(
+        holders.map(({ rawScore }) => rawScore),
+      );
       const risk = calculateRisk({
         asOf,
         businessCriticality: area.businessCriticality,
@@ -82,6 +88,7 @@ export class RiskService {
         ...risk,
         riskScore: scoreDisplay(risk.riskScore),
         rawRiskScore: risk.riskScore,
+        primaryHolderId: holders[0]?.employeeId ?? null,
       };
     });
   }
@@ -103,8 +110,9 @@ export class RiskService {
     if (!area) throw new NotFoundException("Knowledge area not found");
     const [risk] = await this.calculate([area], this.date(query));
     if (!risk) throw new NotFoundException("Knowledge area not found");
-    const { rawRiskScore: _raw, ...data } = risk;
+    const { rawRiskScore: _raw, primaryHolderId: _holder, ...data } = risk;
     void _raw;
+    void _holder;
     return { data };
   }
   async distribution(query: RiskQuery) {
@@ -199,14 +207,40 @@ export class RiskService {
         a.knowledgeArea.name.localeCompare(b.knowledgeArea.name) ||
         a.knowledgeArea.id.localeCompare(b.knowledgeArea.id),
     );
-    const data = risks
-      .slice((query.page - 1) * query.pageSize, query.page * query.pageSize)
-      .map(({ knowledgeArea, effectiveExpertCount, riskScore, riskLevel }) => ({
+    const page = risks.slice(
+      (query.page - 1) * query.pageSize,
+      query.page * query.pageSize,
+    );
+    // The holder with the largest contribution gives context for each area;
+    // it is not a ranking of people across areas.
+    const holderIds = [
+      ...new Set(page.flatMap(({ primaryHolderId: id }) => (id ? [id] : []))),
+    ];
+    const names = new Map(
+      holderIds.length
+        ? (
+            await this.prisma.employee.findMany({
+              where: { id: { in: holderIds } },
+              select: { id: true, name: true },
+            })
+          ).map((person) => [person.id, person])
+        : [],
+    );
+    const data = page.map(
+      ({
         knowledgeArea,
         effectiveExpertCount,
         riskScore,
         riskLevel,
-      }));
+        primaryHolderId,
+      }) => ({
+        knowledgeArea,
+        effectiveExpertCount,
+        riskScore,
+        riskLevel,
+        primaryHolder: (primaryHolderId && names.get(primaryHolderId)) || null,
+      }),
+    );
     return { asOf, ...paginate(data, risks.length, query) };
   }
   async capture(id: string) {

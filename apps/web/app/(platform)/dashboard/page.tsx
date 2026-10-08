@@ -1,16 +1,23 @@
 import {
+  AlertTriangle,
   ArrowRight,
+  ArrowRightLeft,
   BookOpenText,
   Boxes,
   FileText,
+  ShieldAlert,
   ShieldCheck,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { CriticalityMeter } from "@/components/criticality-meter";
+import { ExplainDrawer } from "@/components/explain-drawer";
+import { InfoTip } from "@/components/info-tip";
+import { RiskMethod } from "@/components/methodology";
 import { PageHeader } from "@/components/page-header";
 import { RiskBadge, RiskOverview } from "@/components/risk-summary";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +47,8 @@ import type {
   DepartmentRisk,
   HighRiskKnowledge,
   RiskDistribution,
+  RiskOverviewSummary,
+  TransferSummary,
 } from "@/lib/api-types";
 import {
   evidenceTypeLabels,
@@ -47,6 +56,7 @@ import {
   formatPercent,
   pluralize,
 } from "@/lib/format";
+import { glossary } from "@/lib/glossary";
 import { requireSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -57,16 +67,20 @@ const linkClassName =
 
 interface StatCardProps {
   label: string;
-  value: number;
-  detail: string;
+  value: number | string;
+  detail: ReactNode;
   icon: LucideIcon;
+  tip?: string;
 }
 
-function StatCard({ label, value, detail, icon: Icon }: StatCardProps) {
+function StatCard({ label, value, detail, icon: Icon, tip }: StatCardProps) {
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-600">{label}</p>
+        <p className="flex items-center gap-1 text-sm font-medium text-slate-600">
+          {label}
+          {tip ? <InfoTip term={label}>{tip}</InfoTip> : null}
+        </p>
         <span className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-800">
           <Icon aria-hidden="true" className="size-4" />
         </span>
@@ -89,6 +103,8 @@ export default async function DashboardPage() {
     distribution,
     departmentRisk,
     highRisk,
+    riskOverview,
+    transfers,
   ] = await Promise.all([
     apiGet<DashboardSummary>("/dashboard/summary"),
     apiGet<{ data: DepartmentSummary[] }>("/departments"),
@@ -105,6 +121,8 @@ export default async function DashboardPage() {
       "/dashboard/high-risk-knowledge",
       { page: 1, pageSize: 6 },
     ),
+    apiGet<RiskOverviewSummary>("/dashboard/risk-overview"),
+    apiGet<TransferSummary>("/dashboard/transfer-summary"),
   ]);
   const { totals } = summary;
 
@@ -114,7 +132,50 @@ export default async function DashboardPage() {
         eyebrow="Northstar Industries"
         title="Knowledge risk overview"
         description="Where knowledge areas are vulnerable and why, alongside Northstar's knowledge inventory. Risk describes areas, never people."
-      />
+      >
+        <ExplainDrawer
+          triggerLabel="How risk is calculated"
+          title="How knowledge risk is calculated"
+        >
+          <RiskMethod />
+        </ExplainDrawer>
+      </PageHeader>
+
+      <section
+        aria-label="Resilience at a glance"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <StatCard
+          label="Critical knowledge areas"
+          value={riskOverview.criticalKnowledgeAreas}
+          icon={ShieldAlert}
+          tip={glossary.riskScore}
+          detail={`Of ${riskOverview.totalKnowledgeAreas} areas, risk score 45 or more`}
+        />
+        <StatCard
+          label="At-risk knowledge areas"
+          value={riskOverview.atRiskKnowledgeAreas}
+          icon={AlertTriangle}
+          detail="High or critical exposure"
+        />
+        <StatCard
+          label="Average effective experts"
+          value={riskOverview.averageEffectiveExpertCount.toFixed(1)}
+          icon={UsersRound}
+          tip={glossary.effectiveExperts}
+          detail="Per knowledge area, from evidence"
+        />
+        <StatCard
+          label="Active transfer plans"
+          value={transfers.active}
+          icon={ArrowRightLeft}
+          detail={
+            <Link href="/transfers" className={linkClassName}>
+              {transfers.totals.COMPLETED} completed · view plans
+            </Link>
+          }
+        />
+      </section>
 
       <RiskOverview distribution={distribution} />
 
@@ -153,6 +214,20 @@ export default async function DashboardPage() {
                         {entry.knowledgeArea.department.name} ·{" "}
                         {entry.effectiveExpertCount.toFixed(1)} effective
                         experts
+                        {entry.primaryHolder ? (
+                          <>
+                            {" "}
+                            · primary holder{" "}
+                            <Link
+                              href={`/people/${entry.primaryHolder.id}`}
+                              className="rounded underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:outline-none"
+                            >
+                              {entry.primaryHolder.name}
+                            </Link>
+                          </>
+                        ) : (
+                          " · no recorded holder"
+                        )}
                       </p>
                     </div>
                     <RiskBadge

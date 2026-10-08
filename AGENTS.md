@@ -27,6 +27,8 @@ Phase 5, unavailability simulation, is complete. The protected API, saved-run mi
 
 Phase 6, knowledge transfer, is implemented and awaiting acceptance-owner screenshot sign-off; see `docs/testing/PHASE_6_TEST_CASES.md`. Completed transfer activities append traceable evidence, never a separate score. Integration and E2E tests must avoid Line 4, Budi's areas, and `emp_ayu`, whose seeded state other suites assert. Use `pnpm db:reset --yes` only deliberately: it deletes user-created records.
 
+Phase 7, product polish, is implemented and awaiting acceptance-owner screenshot sign-off; see `docs/testing/PHASE_7_TEST_CASES.md`. Charts are dependency-free server-rendered SVG with one measure per axis; keep the table or list beside every chart. The knowledge graph remains deferred.
+
 Do not mistake an authentication `User` for the domain `Employee`. They have different responsibilities and are deliberately unlinked.
 
 Do not add the knowledge graph, real connectors, AI, Neo4j, or microservices before their scheduled phase.

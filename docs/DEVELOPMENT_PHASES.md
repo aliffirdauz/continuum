@@ -14,7 +14,7 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 | 4     | Risk engine               | Complete    |
 | 5     | Unavailability simulation | Complete    |
 | 6     | Knowledge transfer        | In progress |
-| 7     | Product polish            | Planned     |
+| 7     | Product polish            | In progress |
 
 ## Phase 1: Foundation
 
@@ -345,15 +345,49 @@ Implementation sequence (TDD):
 
 ## Phase 7: Product Polish
 
-Status: **Planned**
+Status: **In progress — awaiting acceptance-owner screenshot sign-off.** On 2026-10-08, a rebuilt Compose stack passed:
 
-Planned outcomes:
+- format, lint, typecheck, and builds, plus API unit **201/201** and web unit **75/75**;
+- API integration **81/81** (twice) and Chromium E2E **21 passed, 5 opt-in skipped** (twice);
+- the opt-in spec section 49 portfolio demo **1/1**, which produced the README screenshots;
+- a client bundle token scan.
 
-- complete loading, empty, error, skeleton, and tooltip states;
-- explainability drawers and historical charts;
-- responsive and accessibility review;
-- seed reset workflow, final architecture diagram, and screenshots;
-- complete E2E portfolio demo path.
+Two defects were found and fixed, tooltip overflow at 375 pixels and chart label collisions; see [`testing/PHASE_7_TEST_CASES.md`](testing/PHASE_7_TEST_CASES.md).
+
+Goal: make the portfolio demo complete and self-explanatory without changing any formula (spec sections 15, 36, 45, 47, 49, and the definition of done). Phase 3–6 calculations, versions, and API semantics stay unchanged; additions are read-only.
+
+Scope:
+
+1. **Dashboard completeness (spec 15).** Add an active-transfer-plans card, from a read-only `GET /dashboard/transfer-summary` that returns counts by status. Show each highest-risk area's **primary holder**: the person with the largest unrounded expertise contribution in that area, as context for who holds the knowledge rather than a ranking of people. This is an additive `primaryHolder` field on `GET /dashboard/high-risk-knowledge`, with deterministic ID tie-breaks.
+2. **Historical charts**, as inline, server-rendered SVG with no dependency, following the agreed decision:
+   - transfer progress, plotting backup coverage and area risk score per checkpoint, with level bands;
+   - captured risk snapshot history on knowledge detail, shown only when at least two real snapshots exist.
+
+   Every chart has a text alternative and is not the only carrier of its values; the existing tables and lists remain.
+
+3. **Explainability drawers.** An accessible slide-over (native `<dialog>`: focus moves in, Escape closes, focus returns) explains:
+   - how risk is calculated;
+   - how expertise is scored;
+   - how a simulation compares;
+   - how transfer coverage grows.
+
+   Triggers appear on the dashboard, knowledge detail, simulation result, and transfer detail. The content restates the documented formulas and versions; it never recomputes anything.
+
+4. **Tooltips** for terms people misread: effective experts, coverage proxy, backup coverage, risk score, confidence, and business criticality. Each opens on hover and keyboard focus, is dismissible with Escape, and is announced through `aria-describedby`.
+5. **Loading, empty, and error states.** Add route skeletons shaped like the dashboard, knowledge detail, simulation result, and transfer detail pages, and review empty and error copy on every page.
+6. **Responsive and accessibility review.** Check every primary page at 375 pixels and on desktop for horizontal overflow, keyboard reachability of new controls, visible focus, and labels. Fix what the review finds.
+7. **Documentation.** The README covers the spec 47 items (problem, product hypothesis, architecture with a Mermaid diagram, main technical concepts, the demo walkthrough with the reset workflow, and screenshots); `docs/ARCHITECTURE.md` gets the final diagram.
+8. **Complete E2E portfolio demo path (spec 49).** An opt-in Playwright run resets the database and then:
+   1. dashboard, then Line 4, its evidence, and the risk drawer;
+   2. the Expert Finder;
+   3. a simulation of Budi's unavailability, then planning a transfer from the result;
+   4. completing activities for Andri and then Joko until Line 4 is LOW;
+   5. the dashboard again;
+   6. README screenshots, followed by a final reset.
+
+Exclusions: the knowledge graph (deferred), new formulas or formula-version bumps, new write endpoints, charting dependencies, settings, notifications, and AI features.
+
+Acceptance: all automated gates on a rebuilt stack, the opt-in demo path passing with screenshots reviewed, and owner sign-off.
 
 ## Phase Completion Protocol
 
