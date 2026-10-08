@@ -146,7 +146,7 @@ The API's `apps/api/src/simulations/` compares both branches at the same `starte
 
 `POST /api/v1/simulations/unavailability` is an explicit manager/knowledge-admin write to `simulation_runs`, storing creator, inputs, formula versions, and immutable JSON results under an opaque ID. `GET /api/v1/simulations/:id` serves the saved result to its creator or a knowledge admin without recomputation or writes; an inaccessible ID is treated as not found. The web `/simulate` server action forwards authenticated POST requests using a server-held token and links to `/simulate/:id`; the browser does not call the API directly. The POST responds from the persisted row, so a later GET returns exactly the same JSON; JSONB may normalize the last digits of unrounded floats. Results are hypothetical, not employee ratings or observed outages. Acceptance evidence is in [`testing/PHASE_5_TEST_CASES.md`](testing/PHASE_5_TEST_CASES.md).
 
-## Phase 6 Knowledge Transfer Boundary (Awaiting Sign-off)
+## Phase 6 Knowledge Transfer Boundary
 
 The framework-independent rules under `apps/api/src/transfers/transfer.ts` cover:
 

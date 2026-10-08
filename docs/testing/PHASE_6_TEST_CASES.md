@@ -1,6 +1,6 @@
 # Phase 6: Knowledge Transfer Acceptance
 
-Status: **In progress — automated and agent-assisted acceptance passed on 2026-10-08; acceptance-owner screenshot sign-off pending**. Scope, decisions, and calibration live in [`../DEVELOPMENT_PHASES.md`](../DEVELOPMENT_PHASES.md). The cases below describe expected behavior; the Results section records what was actually run.
+Status: **Complete** — automated and agent-assisted acceptance passed on 2026-10-08, and the acceptance owner approved the screenshots the same day. Scope, decisions, and calibration live in [`../DEVELOPMENT_PHASES.md`](../DEVELOPMENT_PHASES.md). The cases below describe expected behavior; the Results section records what was actually run.
 
 ## Rules and calibration
 
@@ -88,4 +88,4 @@ Visual review by the agent:
 - Employees see no write controls.
 - The fixed-sidebar and skip-link placement in full-page desktop captures is the same Playwright artifact as in the accepted Phase 4 and 5 screenshots.
 
-Acceptance-owner screenshot review is **pending**.
+**Acceptance-owner sign-off (2026-10-08):** the owner reviewed the screenshots above and confirmed the visual result is acceptable. Phase 6 is complete.

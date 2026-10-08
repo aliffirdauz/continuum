@@ -6,15 +6,15 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 
 ## Status Summary
 
-| Phase | Scope                     | Status      |
-| ----- | ------------------------- | ----------- |
-| 1     | Foundation                | Complete    |
-| 2     | Core data                 | Complete    |
-| 3     | Expertise engine          | Complete    |
-| 4     | Risk engine               | Complete    |
-| 5     | Unavailability simulation | Complete    |
-| 6     | Knowledge transfer        | In progress |
-| 7     | Product polish            | Planned     |
+| Phase | Scope                     | Status   |
+| ----- | ------------------------- | -------- |
+| 1     | Foundation                | Complete |
+| 2     | Core data                 | Complete |
+| 3     | Expertise engine          | Complete |
+| 4     | Risk engine               | Complete |
+| 5     | Unavailability simulation | Complete |
+| 6     | Knowledge transfer        | Complete |
+| 7     | Product polish            | Planned  |
 
 ## Phase 1: Foundation
 
@@ -250,7 +250,7 @@ Implementation sequence (TDD, RED → GREEN at each boundary):
 
 ## Phase 6: Knowledge Transfer
 
-Status: **In progress — awaiting acceptance-owner screenshot sign-off.** On 2026-10-08, a rebuilt Compose stack passed every automated gate:
+Status: **Complete** — the acceptance owner reviewed the Phase 6 screenshots and approved the visual result on 2026-10-08. The same day, a rebuilt Compose stack passed every automated gate:
 
 - format, lint, typecheck, and builds, plus API unit **199/199** and web unit **70/70**;
 - schema drift check, upgrade of the existing database, and a fresh disposable database;
