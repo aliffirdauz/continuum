@@ -89,7 +89,7 @@ Phase 5, unavailability simulation, is complete. A manager or knowledge admin ca
 
 Phase 6, knowledge transfer, is complete; the acceptance owner approved its screenshots on 2026-10-08. Managers and knowledge admins plan backup coverage at `/transfers`: choose a knowledge area, its primary holder, a backup, a target coverage, and a date. They then add deterministic, recommended activities and complete them. Each completed activity records one traceable evidence row for the backup, so expertise, effective expert count, and risk change only through the existing Phase 3 and Phase 4 engines. Each plan keeps a dated progress history. With the seed data, a Budi → Andri plan takes Production Line 4 from CRITICAL to HIGH, and a second Budi → Joko plan takes it to LOW. Every role can read plans; only managers and knowledge admins change them. See [`docs/testing/PHASE_6_TEST_CASES.md`](docs/testing/PHASE_6_TEST_CASES.md).
 
-Phase 7, product polish, is implemented and awaiting acceptance-owner screenshot sign-off. It adds:
+Phase 7, product polish, is complete; the acceptance owner approved its screenshots on 2026-10-08. It adds:
 
 - dashboard cards for critical and at-risk areas, average effective experts, and active transfer plans;
 - primary holders on the highest-risk list;

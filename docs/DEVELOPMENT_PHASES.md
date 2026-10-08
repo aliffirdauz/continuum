@@ -6,15 +6,15 @@ This document tracks delivery against `continuum_project_spec.md`. A phase is co
 
 ## Status Summary
 
-| Phase | Scope                     | Status      |
-| ----- | ------------------------- | ----------- |
-| 1     | Foundation                | Complete    |
-| 2     | Core data                 | Complete    |
-| 3     | Expertise engine          | Complete    |
-| 4     | Risk engine               | Complete    |
-| 5     | Unavailability simulation | Complete    |
-| 6     | Knowledge transfer        | Complete    |
-| 7     | Product polish            | In progress |
+| Phase | Scope                     | Status   |
+| ----- | ------------------------- | -------- |
+| 1     | Foundation                | Complete |
+| 2     | Core data                 | Complete |
+| 3     | Expertise engine          | Complete |
+| 4     | Risk engine               | Complete |
+| 5     | Unavailability simulation | Complete |
+| 6     | Knowledge transfer        | Complete |
+| 7     | Product polish            | Complete |
 
 ## Phase 1: Foundation
 
@@ -345,7 +345,7 @@ Implementation sequence (TDD):
 
 ## Phase 7: Product Polish
 
-Status: **In progress — awaiting acceptance-owner screenshot sign-off.** On 2026-10-08, a rebuilt Compose stack passed:
+Status: **Complete** — the acceptance owner reviewed the Phase 7 screenshots and approved the visual result on 2026-10-08. The same day, a rebuilt Compose stack passed:
 
 - format, lint, typecheck, and builds, plus API unit **201/201** and web unit **75/75**;
 - API integration **81/81** (twice) and Chromium E2E **21 passed, 5 opt-in skipped** (twice);

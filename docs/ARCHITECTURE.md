@@ -197,7 +197,7 @@ Inverse HHI is relative. Training a backup until they dominate the primary holde
 
 Writes from the web are server actions with the server-held token. They refresh the plan with `revalidatePath`, because a same-page redirect would not refetch it. Evidence is append-only, so `pnpm db:reset --yes` (`apps/api/prisma/reset.ts`) is the explicit way back to the seed state; it deletes only user-created records and reruns the idempotent seed. See [`testing/PHASE_6_TEST_CASES.md`](testing/PHASE_6_TEST_CASES.md).
 
-## Phase 7 Product Polish Boundary (Awaiting Sign-off)
+## Phase 7 Product Polish Boundary
 
 Phase 7 adds no formula or write endpoint. Its two read-only additions are:
 

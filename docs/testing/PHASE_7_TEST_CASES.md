@@ -1,6 +1,6 @@
 # Phase 7: Product Polish Acceptance
 
-Status: **In progress — automated and agent-assisted acceptance passed on 2026-10-08; acceptance-owner screenshot sign-off pending**. Scope lives in [`../DEVELOPMENT_PHASES.md`](../DEVELOPMENT_PHASES.md). No formula, version, or write endpoint changed.
+Status: **Complete** — automated and agent-assisted acceptance passed on 2026-10-08, and the acceptance owner approved the screenshots the same day. Scope lives in [`../DEVELOPMENT_PHASES.md`](../DEVELOPMENT_PHASES.md). No formula, version, or write endpoint changed.
 
 ## Cases
 
@@ -46,4 +46,4 @@ Visual review by the agent:
 
 Environment note: during one rebuild, C: free space dropped briefly to 387 MB. The space was not consumed by Docker; the VHDX size was unchanged. The build watchdog cancelled the build before the engine was at risk, and a retry completed with at least 6.2 GB free.
 
-Acceptance-owner screenshot review is **pending**.
+**Acceptance-owner sign-off (2026-10-08):** the owner reviewed the screenshots above and confirmed the visual result is acceptable. Phase 7 is complete.
